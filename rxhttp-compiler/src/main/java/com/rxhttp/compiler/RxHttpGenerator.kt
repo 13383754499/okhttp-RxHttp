@@ -41,7 +41,7 @@ class RxHttpGenerator {
     }
 
     @Throws(IOException::class)
-    fun generateCode(elementUtils: Elements, filer: Filer) {
+    fun generateCode(elementUtils: Elements, filer: Filer, okHttpVersion: String) {
         val httpSenderName = ClassName.get("rxhttp", "HttpSender")
         val rxHttpPluginsName = ClassName.get("rxhttp", "RxHttpPlugins")
         val okHttpClientName = ClassName.get("okhttp3", "OkHttpClient")
@@ -209,6 +209,7 @@ class RxHttpGenerator {
 
         methodList.add(
             MethodSpec.methodBuilder("format")
+                .addJavadoc("通过占位符，将参数与url拼接在一起，使用标准的Java占位符协议")
                 .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
                 .addParameter(String::class.java, "url")
                 .addParameter(ArrayTypeName.of(Any::class.java), "formatArgs")
@@ -226,6 +227,38 @@ class RxHttpGenerator {
             .addMember("value", "\"unchecked\"")
             .build()
         val baseRxHttpName = ClassName.get("rxhttp.wrapper.param", "BaseRxHttp")
+        val diskLruCacheFactoryName = ClassName.get("rxhttp.wrapper.cahce", "DiskLruCacheFactory")
+        val diskLruCacheName = ClassName.get("okhttp3.internal.cache", "DiskLruCache")
+        val taskRunnerName = ClassName.get("okhttp3.internal.concurrent", "TaskRunner")
+        val staticCodeBlock = when {
+            okHttpVersion < "4.0.0" -> {
+                CodeBlock.of(
+                    """
+                    ${"$"}T.factory = (fileSystem, directory, appVersion, valueCount, maxSize) -> {               
+                        return ${"$"}T.create(fileSystem, directory, appVersion, valueCount, maxSize); 
+                    };
+    
+                """.trimIndent(), diskLruCacheFactoryName, diskLruCacheName)
+            }
+            okHttpVersion < "4.3.0" -> {
+                CodeBlock.of(
+                    """
+                    ${"$"}T.factory = (fileSystem, directory, appVersion, valueCount, maxSize) -> {               
+                        return ${"$"}T.Companion.create(fileSystem, directory, appVersion, valueCount, maxSize); 
+                    };
+    
+                """.trimIndent(), diskLruCacheFactoryName, diskLruCacheName)
+            }
+            else -> {
+                CodeBlock.of(
+                    """
+                    ${"$"}T.factory = (fileSystem, directory, appVersion, valueCount, maxSize) -> {               
+                        return new ${"$"}T(fileSystem, directory, appVersion, valueCount, maxSize, ${"$"}T.INSTANCE); 
+                    };
+    
+                """.trimIndent(), diskLruCacheFactoryName, diskLruCacheName, taskRunnerName)
+            }
+        }
         val rxHttpBuilder = TypeSpec.classBuilder(CLASSNAME)
             .addJavadoc("""
                 Github
@@ -236,6 +269,7 @@ class RxHttpGenerator {
             """.trimIndent())
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(build)
+            .addStaticBlock(staticCodeBlock)
             .addField(p, "param", Modifier.PROTECTED)
 
         if (isDependenceRxJava()) {

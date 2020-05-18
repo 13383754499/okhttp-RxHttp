@@ -20,29 +20,28 @@
 
   ***9. 支持全局加解密、添加公共参数及头部、网络缓存，均支持对某个请求单独设置***
 
-
-[遇到问题，点击这里，99%的问题都能自己解决](https://github.com/liujingxing/okhttp-RxHttp/wiki/FAQ)
-
-***RxHttp&RxLife 交流群：378530627***
-
 **Gradle依赖**
 
 ```java
-//以下两个为必须，其它均为非必须
-implementation 'com.ljx.rxhttp:rxhttp:2.2.1'
-//生成RxHttp类，kotlin用户，请使用kapt替代annotationProcessor
-annotationProcessor 'com.ljx.rxhttp:rxhttp-compiler:2.2.1'
+//以下三个为必须，其它均为非必须
+implementation 'com.ljx.rxhttp:rxhttp:2.2.2'
+implementation 'com.squareup.okhttp3:okhttp:4.6.0'  //rxhttp v2.2.2版本起，需要手动依赖okhttp
+annotationProcessor 'com.ljx.rxhttp:rxhttp-compiler:2.2.2' //生成RxHttp类，kotlin用户，请使用kapt替代annotationProcessor
 
 implementation 'com.ljx.rxlife:rxlife-coroutine:2.0.0'  //管理协程生命周期，页面销毁，关闭请求
 implementation 'com.ljx.rxlife2:rxlife-rxjava:2.0.0'    //管理RxJava2生命周期，页面销毁，关闭请求
 implementation 'com.ljx.rxlife3:rxlife-rxjava:3.0.0'    //管理RxJava3生命周期，页面销毁，关闭请求
 
 //Converter 根据自己需求选择 RxHttp默认内置了GsonConverter
-implementation 'com.ljx.rxhttp:converter-jackson:2.2.1'
-implementation 'com.ljx.rxhttp:converter-fastjson:2.2.1'
-implementation 'com.ljx.rxhttp:converter-protobuf:2.2.1'
-implementation 'com.ljx.rxhttp:converter-simplexml:2.2.1'
+implementation 'com.ljx.rxhttp:converter-jackson:2.2.2'
+implementation 'com.ljx.rxhttp:converter-fastjson:2.2.2'
+implementation 'com.ljx.rxhttp:converter-protobuf:2.2.2'
+implementation 'com.ljx.rxhttp:converter-simplexml:2.2.2'
 ```
+[遇到问题，点击这里，99%的问题都能自己解决](https://github.com/liujingxing/okhttp-RxHttp/wiki/FAQ)
+
+***RxHttp&RxLife 交流群：378530627***
+
 # 准备工作
 
 1、RxHttp 要求项目使用Java 8 或更高版本，请在 app 的 build.gradle 添加以下代码
@@ -81,8 +80,25 @@ dependencies {
 
 最后，***rebuild一下(此步骤是必须的)*** ，就会自动生成RxHttp类，到这，准备工作完毕。
 
+# API兼容
 
-## 上手教程
+RxHttp最低要求为API 15，但是由于`OkHttp 3.14.x`以上版本, 最低要求为API 21，
+如果你想要兼容到API 15，请依赖`OkHttp 3.12.x` 版本，并告知rxhttp你依赖的okhttp版本，如下：
+
+```java
+defaultConfig {
+    javaCompileOptions {
+        annotationProcessorOptions {
+            //如你依赖的okhttp并非最新版本，都需要告知RxHttp你依赖的okhttp版本
+            arguments = [rxhttp_okhttp: '3.12.6']  //可传入3.12.0至4.6.0任一版本(4.3.0除外)
+        }
+    }
+}
+implementation 'com.squareup.okhttp3:okhttp:3.12.6' //此版本最低要求 API 9
+```
+***注：RxHttp目前对OkHttp 的 `v3.12.0 - v4.6.0`均已完成适配工作（v4.3.0除外，该版本有一bug，暂时无法适配）***
+
+# 上手教程
 
 30秒上手教程：https://juejin.im/post/5cfcbbcbe51d455a694f94df
 
@@ -98,19 +114,8 @@ wiki详细文档：https://github.com/liujingxing/okhttp-RxHttp/wiki  (此文档
 [已知问题](https://github.com/liujingxing/okhttp-RxHttp/wiki/%E5%B7%B2%E7%9F%A5%E9%97%AE%E9%A2%98) &nbsp;&nbsp;&nbsp;&nbsp;
 [Java工程依赖注意事项](https://github.com/liujingxing/okhttp-RxHttp/wiki/Java%E5%B7%A5%E7%A8%8B%E4%BE%9D%E8%B5%96)
 
-## API兼容
 
-RxHttp最低要求为API 15，但是由于内部依赖OkHttp 3.14.1版本, 最低要求为API 21。
-如果你要的项目要兼容到API 15，请将RxHttp内部的OkHttp剔除，并引入低版本的OkHttp，如下：
-
-```
-implementation('com.ljx.rxhttp:rxhttp:x.x.x') { //xxx为RxHttp最新版本
-    exclude group: "com.squareup.okhttp3"
-}
-implementation 'com.squareup.okhttp3:okhttp:3.12.6' //此版本最低要求 API 9
-```
-
-## 混淆
+# 混淆
 
 RxHttp作为开源库，可混淆，也可不混淆，如果不希望被混淆，请在proguard-rules.pro文件添加以下代码
 
@@ -118,7 +123,7 @@ RxHttp作为开源库，可混淆，也可不混淆，如果不希望被混淆�
 -keep class rxhttp.**{*;}
 ```
 
-## 小技巧
+# 小技巧
 
 在这教大家一个小技巧，由于使用RxHttp发送请求都遵循请求三部曲，故我们可以在android studio 设置代码模版,如下
 
@@ -129,7 +134,7 @@ RxHttp作为开源库，可混淆，也可不混淆，如果不希望被混淆�
 ![image](https://github.com/liujingxing/RxHttp/blob/master/screen/templates_demo.gif)
 
 
-## Demo演示
+# Demo演示
 <img src="https://github.com/liujingxing/RxHttp/blob/master/screen/screenrecorder-2019-11-27_22_56_26.gif" width = "240" height = "520" />
 
 > 更多功能，请下载Demo体验

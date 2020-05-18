@@ -16,7 +16,10 @@ android {
 
         javaCompileOptions {
             annotationProcessorOptions {
-                arguments = [rxhttp_rxjava: 'rxjava3']  //可传入rxjava2、rxjava3
+                arguments = [
+                        rxhttp_okhttp: okhttp_version,
+                        rxhttp_rxjava: 'rxjava3' //可传入rxjava2、rxjava3
+                ]
             }
         }
     }
@@ -51,6 +54,8 @@ dependencies {
 
 //    implementation project(":rxhttp")
 //    kapt project(':rxhttp-compiler')
+
+    implementation "com.squareup.okhttp3:okhttp:${okhttp_version}"
 
     implementation "com.ljx.rxhttp:rxhttp:${rxhttp_version}"
     kapt "com.ljx.rxhttp:rxhttp-compiler:${rxhttp_version}"

@@ -29,10 +29,14 @@ import okhttp3.Headers.Builder;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.internal.cache.DiskLruCache;
+import okhttp3.internal.concurrent.TaskRunner;
+import org.jetbrains.annotations.NotNull;
 import rxhttp.HttpSender;
 import rxhttp.RxHttpPlugins;
 import rxhttp.wrapper.cahce.CacheMode;
 import rxhttp.wrapper.cahce.CacheStrategy;
+import rxhttp.wrapper.cahce.DiskLruCacheFactory;
 import rxhttp.wrapper.callback.Function;
 import rxhttp.wrapper.callback.IConverter;
 import rxhttp.wrapper.entity.ParameterizedTypeImpl;
@@ -49,6 +53,12 @@ import rxhttp.wrapper.parse.Parser;
  */
 @SuppressWarnings("unchecked")
 public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
+  static {
+    DiskLruCacheFactory.factory = (fileSystem, directory, appVersion, valueCount, maxSize) -> {               
+        return new DiskLruCache(fileSystem, directory, appVersion, valueCount, maxSize, TaskRunner.INSTANCE); 
+    };
+  }
+
   protected P param;
 
   /**
@@ -177,12 +187,18 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
     return with(Param.deleteJsonArray(format(url, formatArgs)));
   }
 
-  public static RxHttpPostEncryptJsonParam postEncryptJson(String url, Object... formatArgs) {
+  public static RxHttpPostEncryptJsonParam postEncryptJson(@NotNull String url,
+      Object... formatArgs) {
     return new RxHttpPostEncryptJsonParam(new PostEncryptJsonParam(format(url, formatArgs)));
   }
 
   public static RxHttpPostEncryptFormParam postEncryptForm(String url, Object... formatArgs) {
     return new RxHttpPostEncryptFormParam(new PostEncryptFormParam(format(url, formatArgs)));
+  }
+
+  public static RxHttpPostEncryptFormParam postEncryptForm(String url, Method method,
+      Object... formatArgs) {
+    return new RxHttpPostEncryptFormParam(new PostEncryptFormParam(format(url, formatArgs), method));
   }
 
   public static RxHttpGetEncryptParam getEncrypt(String url, Object... formatArgs) {
@@ -528,6 +544,9 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
     }
   }
 
+  /**
+   * 通过占位符，将参数与url拼接在一起，使用标准的Java占位符协议
+   */
   private static String format(String url, Object... formatArgs) {
     return formatArgs == null || formatArgs.length == 0 ? url : String.format(url, formatArgs);
   }

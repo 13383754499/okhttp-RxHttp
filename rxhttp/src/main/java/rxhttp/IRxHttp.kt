@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import okhttp3.Headers
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import rxhttp.wrapper.OkHttpCompat
 import rxhttp.wrapper.await.AwaitImpl
 import rxhttp.wrapper.cahce.CacheStrategy
 import rxhttp.wrapper.callback.ProgressCallbackImpl
@@ -48,7 +49,7 @@ suspend inline fun <reified K : Any, reified V : Any> IRxHttp.awaitMap() = await
 
 suspend fun IRxHttp.awaitBitmap() = await(BitmapParser())
 
-suspend fun IRxHttp.awaitHeaders(): Headers = awaitOkResponse().headers()
+suspend fun IRxHttp.awaitHeaders(): Headers = OkHttpCompat.headers(awaitOkResponse())
 
 suspend fun IRxHttp.awaitOkResponse() = await(OkResponseParser())
 
@@ -100,7 +101,7 @@ inline fun <reified K : Any, reified V : Any> IRxHttp.toMap() = toClass<Map<K, V
 
 fun IRxHttp.toBitmap() = toParser(BitmapParser())
 
-fun IRxHttp.toHeaders() = toOkResponse().map { it.headers() }
+fun IRxHttp.toHeaders() = toOkResponse().map { OkHttpCompat.headers(it) }
 
 fun IRxHttp.toOkResponse() = toParser(OkResponseParser())
 
