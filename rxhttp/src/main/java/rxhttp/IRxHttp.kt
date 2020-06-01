@@ -25,6 +25,8 @@ interface IRxHttp {
         get() = 0L
 
     fun getCacheStrategy(): CacheStrategy
+
+    fun getOkHttpClient(): OkHttpClient
 }
 
 suspend fun IRxHttp.awaitBoolean() = await<Boolean>()
@@ -67,7 +69,7 @@ suspend fun IRxHttp.awaitDownload(
     coroutine: CoroutineScope? = null,
     progress: (Progress) -> Unit
 ): String {
-    val clone = HttpSender.clone(ProgressCallbackImpl(coroutine, breakDownloadOffSize, progress))
+    val clone = HttpSender.clone(getOkHttpClient(), ProgressCallbackImpl(coroutine, breakDownloadOffSize, progress))
     return await(DownloadParser(destPath), clone)
 }
 
@@ -76,7 +78,7 @@ suspend fun IRxHttp.awaitDownload(
  */
 suspend fun <T> IRxHttp.await(
     parser: Parser<T>,
-    client: OkHttpClient = HttpSender.getOkHttpClient()
+    client: OkHttpClient = getOkHttpClient()
 ) = toParser(parser, client).await()
 
 fun IRxHttp.toBoolean() = toClass<Boolean>()
@@ -101,7 +103,14 @@ inline fun <reified K : Any, reified V : Any> IRxHttp.toMap() = toClass<Map<K, V
 
 fun IRxHttp.toBitmap() = toParser(BitmapParser())
 
-fun IRxHttp.toHeaders() = toOkResponse().map { OkHttpCompat.headers(it) }
+fun IRxHttp.toHeaders() = toOkResponse()
+    .map {
+        try {
+            OkHttpCompat.headers(it)
+        } finally {
+            OkHttpCompat.closeQuietly(it)
+        }
+    }
 
 fun IRxHttp.toOkResponse() = toParser(OkResponseParser())
 
@@ -119,11 +128,11 @@ fun IRxHttp.toDownload(
     coroutine: CoroutineScope? = null,
     progress: (Progress) -> Unit
 ): IAwait<String> {
-    val clone = HttpSender.clone(ProgressCallbackImpl(coroutine, breakDownloadOffSize, progress))
+    val clone = HttpSender.clone(getOkHttpClient(), ProgressCallbackImpl(coroutine, breakDownloadOffSize, progress))
     return toParser(DownloadParser(destPath), clone)
 }
 
 fun <T> IRxHttp.toParser(
     parser: Parser<T>,
-    client: OkHttpClient = HttpSender.getOkHttpClient()
+    client: OkHttpClient = getOkHttpClient()
 ): IAwait<T> = AwaitImpl(this, parser, client)

@@ -15,8 +15,8 @@ object ClassHelper {
     @JvmStatic
     fun generatorBaseRxHttp(filer: Filer) {
         if (!isDependenceRxJava()) {
-            generatorClass(filer,"BaseRxHttp","""
-                package rxhttp.wrapper.param;
+            generatorClass(filer, "BaseRxHttp", """
+                package $rxHttpPackage;
 
                 import rxhttp.IRxHttp;
 
@@ -33,7 +33,7 @@ object ClassHelper {
             """.trimIndent())
         } else {
             generatorClass(filer, "BaseRxHttp", """
-            package rxhttp.wrapper.param;
+            package $rxHttpPackage;
 
             import android.graphics.Bitmap;
 
@@ -47,6 +47,7 @@ object ClassHelper {
             import okhttp3.Headers;
             import okhttp3.Response;
             import rxhttp.IRxHttp;
+            import rxhttp.wrapper.OkHttpCompat;
             import rxhttp.wrapper.annotations.Nullable;
             import rxhttp.wrapper.entity.ParameterizedTypeImpl;
             import rxhttp.wrapper.entity.Progress;
@@ -136,8 +137,15 @@ object ClassHelper {
                     return asParser(new OkResponseParser());
                 }
 
-                public final Observable<Headers> asHeaders() {
-                    return asOkResponse().map(Response::headers);
+                public final Observable<Headers> asHeaders() {               
+                    return asOkResponse()                                    
+                        .map(response -> {                                   
+                            try {                                            
+                                return response.headers();                   
+                            } finally {                                      
+                                OkHttpCompat.closeQuietly(response);  
+                            }                                                
+                        });                                                  
                 }
 
                 public final Observable<String> asDownload(String destPath) {
@@ -158,7 +166,7 @@ object ClassHelper {
     @JvmStatic
     fun generatorObservableErrorHandler(filer: Filer) {
         generatorClass(filer, "ObservableErrorHandler", """
-                package rxhttp.wrapper.param;
+                package $rxHttpPackage;
 
                 import ${getClassPath("Observable")};
                 import ${getClassPath("Consumer")};
@@ -190,7 +198,7 @@ object ClassHelper {
     @JvmStatic
     fun generatorObservableHttp(filer: Filer) {
         generatorClass(filer, "ObservableHttp", """
-                package rxhttp.wrapper.param;
+                package $rxHttpPackage;
 
 
                 import java.io.IOException;
@@ -202,6 +210,7 @@ object ClassHelper {
                 import ${getClassPath("DeferredScalarDisposable")};
                 import ${getClassPath("RxJavaPlugins")};
                 import okhttp3.Call;
+                import okhttp3.OkHttpClient;
                 import okhttp3.Request;
                 import okhttp3.Response;
                 import rxhttp.HttpSender;
@@ -228,10 +237,12 @@ object ClassHelper {
                     private Call mCall;
                     private Request request;
                     private InternalCache cache;
+                    private OkHttpClient okClient;
 
-                    ObservableHttp(@NonNull Param param, @NonNull Parser<T> parser) {
+                    ObservableHttp(OkHttpClient okClient, @NonNull Param param, @NonNull Parser<T> parser) {
                         this.param = param;
                         this.parser = parser;
+                        this.okClient = okClient;
                         cache = RxHttpPlugins.getCache();
                     }
 
@@ -279,7 +290,7 @@ object ClassHelper {
                             if (cacheModeIs(CacheMode.ONLY_CACHE)) //仅读缓存模式下，缓存读取失败，直接抛出异常
                                 throw new CacheReadFailedException("Cache read failed");
                         }
-                        Call call = mCall = HttpSender.newCall(request);
+                        Call call = mCall = HttpSender.newCall(okClient, request);
                         Response networkResponse = null;
                         try {
                             networkResponse = call.execute();
@@ -359,7 +370,7 @@ object ClassHelper {
     @JvmStatic
     fun generatorObservableUpload(filer: Filer) {
         generatorClass(filer, "ObservableUpload", """
-                package rxhttp.wrapper.param;
+                package $rxHttpPackage;
 
                 import java.util.concurrent.atomic.AtomicInteger;
                 import java.util.concurrent.atomic.AtomicReference;
@@ -378,11 +389,14 @@ object ClassHelper {
                 import ${getClassPath("RxJavaPlugins")};
                 
                 import okhttp3.Call;
+                import okhttp3.OkHttpClient;
                 import okhttp3.Request;
                 import okhttp3.Response;
                 import rxhttp.HttpSender;
                 import rxhttp.wrapper.entity.Progress;
                 import rxhttp.wrapper.entity.ProgressT;
+                import rxhttp.wrapper.param.IFile;
+                import rxhttp.wrapper.param.Param;
                 import rxhttp.wrapper.parse.Parser;
                 import rxhttp.wrapper.utils.LogUtil;
 
@@ -392,10 +406,12 @@ object ClassHelper {
 
                     private Call mCall;
                     private Request mRequest;
+                    private OkHttpClient okClient;
 
-                    ObservableUpload(Param param, final Parser<T> parser) {
+                    ObservableUpload(OkHttpClient okClient, Param param, final Parser<T> parser) {
                         this.param = param;
                         this.parser = parser;
+                        this.okClient = okClient;
                     }
 
                     @Override
@@ -436,7 +452,7 @@ object ClassHelper {
                         if (mRequest == null) { //防止失败重试时，重复构造okhttp3.Request对象
                             mRequest = param.buildRequest();
                         }
-                        Call call = mCall = HttpSender.newCall(mRequest);
+                        Call call = mCall = HttpSender.newCall(okClient, mRequest);
                         Response response = call.execute();
                         return parser.onParse(response);
                     }
@@ -700,7 +716,7 @@ object ClassHelper {
     @JvmStatic
     fun generatorObservableDownload(filer: Filer) {
         generatorClass(filer, "ObservableDownload", """
-                package rxhttp.wrapper.param;
+                package $rxHttpPackage;
 
                 import java.util.concurrent.atomic.AtomicInteger;
                 import java.util.concurrent.atomic.AtomicReference;
@@ -718,6 +734,7 @@ object ClassHelper {
                 import ${getClassPath("ExceptionHelper")};
                 import ${getClassPath("RxJavaPlugins")};
                 import okhttp3.Call;
+                import okhttp3.OkHttpClient;
                 import okhttp3.Request;
                 import okhttp3.Response;
                 import rxhttp.HttpSender;
@@ -725,6 +742,7 @@ object ClassHelper {
                 import rxhttp.wrapper.callback.ProgressCallback;
                 import rxhttp.wrapper.entity.Progress;
                 import rxhttp.wrapper.entity.ProgressT;
+                import rxhttp.wrapper.param.Param;
                 import rxhttp.wrapper.parse.DownloadParser;
                 import rxhttp.wrapper.utils.LogUtil;
 
@@ -735,15 +753,13 @@ object ClassHelper {
 
                     private Call mCall;
                     private Request mRequest;
+                    private OkHttpClient okClient;
 
                     private int lastProgress; //上次下载进度
 
-                    ObservableDownload(Param param, final String destPath) {
-                        this(param, destPath, 0);
-                    }
-
-                    ObservableDownload(Param param, String destPath, long offsetSize) {
+                    ObservableDownload(OkHttpClient okClient, Param param, String destPath, long offsetSize) {
                         this.param = param;
+                        this.okClient = okClient;
                         this.destPath = destPath;
                         this.offsetSize = offsetSize;
                     }
@@ -794,7 +810,7 @@ object ClassHelper {
                         if (mRequest == null) { //防止失败重试时，重复构造okhttp3.Request对象
                             mRequest = param.buildRequest();
                         }
-                        Call call = mCall = HttpSender.newCall(HttpSender.clone(callback), mRequest);
+                        Call call = mCall = HttpSender.newCall(HttpSender.clone(okClient, callback), mRequest);
                         return call.execute();
                     }
 
@@ -1060,7 +1076,7 @@ object ClassHelper {
     fun generatorClass(filer: Filer, className: String, content: String) {
         var writer: BufferedWriter? = null
         try {
-            val sourceFile = filer.createSourceFile("rxhttp.wrapper.param.$className")
+            val sourceFile = filer.createSourceFile("$rxHttpPackage.$className")
             writer = BufferedWriter(sourceFile.openWriter())
             writer.write(content)
         } catch (e: Exception) {
@@ -1073,95 +1089,4 @@ object ClassHelper {
             }
         }
     }
-
-
-    @JvmStatic
-    fun generatorBaseHttpKt(filer: Filer) {
-//        val baseRxHttpName = ClassName("rxhttp.wrapper.param", "BaseRxHttp");
-//        val t = TypeVariableName("T")
-//        val typeName = String::class.asTypeName()
-//        val classTName = Class::class.asClassName().parameterizedBy(t)
-//        val schedulerName = ClassName("io.reactivex", "Scheduler")
-//        val progressName = ClassName("rxhttp.wrapper.entity", "Progress")
-//        val consumerName = ClassName("io.reactivex.functions", "Consumer")
-//        val consumerProgressName = consumerName.parameterizedBy(progressName)
-//        val observableName = ClassName("io.reactivex", "Observable")
-//        val observableTName = observableName.parameterizedBy(t)
-//        val observableStringName = observableName.parameterizedBy(typeName)
-//        val parserName = ClassName("rxhttp.wrapper.parse", "Parser")
-//        val simpleParserName = ClassName("rxhttp.wrapper.parse", "SimpleParser")
-//        val bitmapParserName = ClassName("rxhttp.wrapper.parse", "BitmapParser")
-//        val downloadParserName = ClassName("rxhttp.wrapper.parse", "DownloadParser")
-//        val parserTName = parserName.parameterizedBy(t)
-//        val parser = ParameterSpec.builder("parser", parserTName).build()
-//        val observeOnScheduler = ParameterSpec.builder("observeOnScheduler", schedulerName.copy(nullable = true))
-//            .defaultValue("null").build()
-//
-//        val funList = ArrayList<FunSpec>()
-//
-//        funList.add(FunSpec.builder("asParser")
-//            .addModifiers(KModifier.ABSTRACT)
-//            .addTypeVariable(t)
-//            .addParameter("parser", parserTName)
-//            .returns(observableTName)
-//            .build())
-//
-//        funList.add(FunSpec.builder("asDownload")
-//            .addModifiers(KModifier.ABSTRACT)
-//            .addParameter("destPath", String::class)
-//            .addParameter("progressConsumer", consumerProgressName)
-//            .addParameter(observeOnScheduler)
-//            .returns(observableStringName)
-//            .build())
-//
-//        funList.add(FunSpec.builder("asClass")
-//            .addTypeVariable(t)
-//            .addParameter("tType", classTName)
-//            .addStatement("return asParser(%T(tType))", simpleParserName)
-//            .build())
-//
-//        funList.add(FunSpec.builder("asString")
-//            .addTypeVariable(t)
-//            .addStatement("return asClass<String>()")
-//            .build())
-//
-//        funList.add(FunSpec.builder("asBitmap")
-//            .addStatement("return asParser(%T())", bitmapParserName)
-//            .build())
-//
-//        funList.add(FunSpec.builder("asDownload")
-//            .addParameter("destPath", String::class)
-//            .addStatement("return asParser(%T(destPath))", downloadParserName)
-//            .build())
-//
-//
-//        val iRxHttpName = ClassName("rxhttp", "IRxHttp")
-//        val typeSpec = TypeSpec.classBuilder("BaseRxHttp")
-//            .addModifiers(KModifier.ABSTRACT)
-//            .addFunctions(funList)
-//            .superclass(iRxHttpName)
-//            .build()
-//
-//        funList.clear()
-//        funList.add(FunSpec.builder("asClass")
-//            .addModifiers(KModifier.INLINE)
-//            .receiver(baseRxHttpName)
-//            .addTypeVariable(t.copy(reified = true))
-//            .addStatement("return asParser(object : %T<T>() {})", simpleParserName)
-//            .build())
-//
-//        funList.add(FunSpec.builder("asList")
-//            .addModifiers(KModifier.INLINE)
-//            .receiver(baseRxHttpName)
-//            .addTypeVariable(t.copy(reified = true))
-//            .addStatement("return asClass<List<T>>()")
-//            .build())
-//
-//        FileSpec.builder("rxhttp.wrapper.param", "BaseRxHttp")
-//            .addType(typeSpec)
-//            .addFunctions(funList)
-//            .build()
-//            .writeTo(filer)
-    }
-
 }

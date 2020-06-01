@@ -68,6 +68,8 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
 
   protected IConverter converter = RxHttpPlugins.getConverter();
 
+  protected OkHttpClient okClient = HttpSender.getOkHttpClient();
+
   private long breakDownloadOffSize = 0L;
 
   protected RxHttp(P param) {
@@ -84,6 +86,10 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
 
   public static void init(OkHttpClient okHttpClient, boolean debug) {
     HttpSender.init(okHttpClient,debug);
+  }
+
+  public static boolean isInit() {
+    return HttpSender.isInit();
   }
 
   /**
@@ -110,8 +116,9 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
     RxHttpPlugins.setOnParamAssembly(onParamAssembly);
   }
 
-  public static OkHttpClient getOkHttpClient() {
-    return HttpSender.getOkHttpClient();
+  @Override
+  public OkHttpClient getOkHttpClient() {
+    return okClient;
   }
 
   public static void dispose(Disposable disposable) {
@@ -119,7 +126,7 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
   }
 
   public static boolean isDisposed(Disposable disposable) {
-    return disposable != null && disposable.isDisposed();
+    return disposable == null || disposable.isDisposed();
   }
 
   public P getParam() {
@@ -387,7 +394,7 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
 
   public Response execute() throws IOException {
     doOnStart();
-    return HttpSender.execute(param);
+    return newCall().execute();
   }
 
   public <T> T execute(Parser<T> parser) throws IOException {
@@ -457,7 +464,7 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
   @Override
   public <T> Observable<T> asParser(Parser<T> parser) {
         doOnStart();
-        Observable<T> observable = new ObservableHttp<T>(param, parser);
+        Observable<T> observable = new ObservableHttp<T>(okClient, param, parser);
         if (scheduler != null) {
             observable = observable.subscribeOn(scheduler);
         }
@@ -468,7 +475,7 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
   public Observable<String> asDownload(String destPath, Consumer<Progress> progressConsumer,
       Scheduler observeOnScheduler) {
         doOnStart();
-        Observable<Progress> observable = new ObservableDownload(param, destPath, breakDownloadOffSize);
+        Observable<Progress> observable = new ObservableDownload(okClient, param, destPath, breakDownloadOffSize);
         if (scheduler != null)
             observable = observable.subscribeOn(scheduler);
         if (observeOnScheduler != null) {
@@ -479,25 +486,18 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
             .map(progress -> ((ProgressT<String>) progress).getResult());
   }
 
-  public <T> Observable<T> asResponse(Class<T> tType) {
-    return asParser(new ResponseParser<T>(tType));
+  public <T> Observable<T> asResponse(Class<T> type) {
+    return asParser(new ResponseParser<T>(type));
   }
 
-  public <T> Observable<List<T>> asResponseList(Class<T> tType) {
-    Type tTypeList = ParameterizedTypeImpl.get(List.class, tType);
-    return asParser(new ResponseParser<List<T>>(tTypeList));
+  public <T> Observable<List<T>> asResponseList(Class<T> type) {
+    Type typeList = ParameterizedTypeImpl.get(List.class, type);
+    return asParser(new ResponseParser<List<T>>(typeList));
   }
 
-  public <T> Observable<PageList<T>> asResponsePageList(Class<T> tType) {
-    Type tTypePageList = ParameterizedTypeImpl.get(PageList.class, tType);
-    return asParser(new ResponseParser<PageList<T>>(tTypePageList));
-  }
-
-  public R setFastJsonConverter() {
-    if (RxHttpManager.fastJsonConverter == null)
-        throw new IllegalArgumentException("converter can not be null");;
-    this.converter = RxHttpManager.fastJsonConverter;
-    return (R)this;
+  public <T> Observable<PageList<T>> asResponsePageList(Class<T> type) {
+    Type typePageList = ParameterizedTypeImpl.get(PageList.class, type);
+    return asParser(new ResponseParser<PageList<T>>(typePageList));
   }
 
   public R setXmlConverter() {
@@ -507,11 +507,25 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
     return (R)this;
   }
 
+  public R setFastJsonConverter() {
+    if (RxHttpManager.fastJsonConverter == null)
+        throw new IllegalArgumentException("converter can not be null");;
+    this.converter = RxHttpManager.fastJsonConverter;
+    return (R)this;
+  }
+
   /**
    * 给Param设置转换器，此方法会在请求发起前，被RxHttp内部调用
    */
   private R setConverter(P param) {
     param.tag(IConverter.class,converter);
+    return (R)this;
+  }
+
+  public R setSimpleClient() {
+    if (RxHttpManager.simpleClient == null)
+        throw new IllegalArgumentException("OkHttpClient can not be null");;
+    this.okClient = RxHttpManager.simpleClient;
     return (R)this;
   }
 
