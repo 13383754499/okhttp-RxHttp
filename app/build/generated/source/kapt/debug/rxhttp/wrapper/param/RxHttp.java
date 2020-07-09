@@ -471,9 +471,16 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
         return observable;
   }
 
+  /**
+   * 监听下载进度时，调用此方法                                                                 
+   * @param destPath           文件存储路径                                              
+   * @param observeOnScheduler 控制回调所在线程，传入null，则默认在请求所在线程(子线程)回调                   
+   * @param progressConsumer   进度回调                                                
+   * @return Observable
+   */
   @Override
-  public Observable<String> asDownload(String destPath, Consumer<Progress> progressConsumer,
-      Scheduler observeOnScheduler) {
+  public Observable<String> asDownload(String destPath, Scheduler observeOnScheduler,
+      Consumer<Progress> progressConsumer) {
         doOnStart();
         Observable<Progress> observable = new ObservableDownload(okClient, param, destPath, breakDownloadOffSize);
         if (scheduler != null)

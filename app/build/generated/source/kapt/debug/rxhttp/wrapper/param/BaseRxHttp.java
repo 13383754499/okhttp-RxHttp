@@ -31,10 +31,28 @@ import rxhttp.wrapper.parse.SimpleParser;
 public abstract class BaseRxHttp implements IRxHttp {
 
     public abstract <T> Observable<T> asParser(Parser<T> parser);
-
+    
+    /**                                                           
+     * 监听下载进度时，调用此方法                                              
+     *                                                                                                          
+     * @param destPath           文件存储路径                                                                         
+     * @param observeOnScheduler 控制回调所在线程，传入null，则默认在请求所在线程(子线程)回调                                              
+     * @param progressConsumer   进度回调                                                                           
+     * @return Observable                                                                                       
+     */                                                                                                          
     public abstract Observable<String> asDownload(String destPath,
-                                                  Consumer<Progress> progressConsumer,
-                                                  @Nullable Scheduler observeOnScheduler);
+                                                  @Nullable Scheduler observeOnScheduler,
+                                                  Consumer<Progress> progressConsumer);      
+
+    /**
+     * @deprecated please user {@link BaseRxHttp#asDownload(String,Scheduler,Consumer)} instead
+     */
+    @Deprecated
+    public final Observable<String> asDownload(String destPath,
+                                         Consumer<Progress> progressConsumer,
+                                         @Nullable Scheduler observeOnScheduler) {
+        return asDownload(destPath, observeOnScheduler, progressConsumer);                                          
+    }
 
     /**
      * @deprecated please user {@link BaseRxHttp#asClass(Class)} instead
@@ -119,7 +137,7 @@ public abstract class BaseRxHttp implements IRxHttp {
 
     public final Observable<String> asDownload(String destPath,
                                                Consumer<Progress> progressConsumer) {
-        return asDownload(destPath, progressConsumer, null);
+        return asDownload(destPath, null, progressConsumer);
     }
 
 }

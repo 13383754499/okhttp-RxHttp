@@ -5,9 +5,9 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import kotlin.text.Charsets;
 import okhttp3.Headers;
 import okhttp3.HttpUrl.Builder;
 import okhttp3.MediaType;
@@ -21,7 +21,7 @@ import okio.BufferedSource;
 import rxhttp.Platform;
 import rxhttp.RxHttpPlugins;
 import rxhttp.wrapper.OkHttpCompat;
-import rxhttp.wrapper.RxHttpVersion;
+import rxhttp.internal.RxHttpVersion;
 import rxhttp.wrapper.annotations.NonNull;
 import rxhttp.wrapper.exception.HttpStatusCodeException;
 import rxhttp.wrapper.exception.ParseException;
@@ -66,7 +66,7 @@ public class LogUtil {
                     .append(URLDecoder.decode(url));
             }
             Platform.get().loge(TAG, builder.toString());
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Platform.get().logd(TAG, "Request error Log printing failed", e);
         }
     }
@@ -93,7 +93,7 @@ public class LogUtil {
                 .append("\n\n").append(response.headers())
                 .append("\n").append(result);
             Platform.get().logi(TAG, builder.toString());
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Platform.get().logd(TAG, "Request end Log printing failed", e);
         }
     }
@@ -106,7 +106,7 @@ public class LogUtil {
                 request.method() + " ------>" +
                 request2Str(request);
             Platform.get().logd(TAG, builder);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Platform.get().logd(TAG, "Request start log printing failed", e);
         }
     }
@@ -116,13 +116,13 @@ public class LogUtil {
         String result;
         try {
             result = getRequestParams(request);
-        } catch (IOException e) {
+        } catch (Throwable e) {
             e.printStackTrace();
             result = request.url().toString();
         }
         try {
             return URLDecoder.decode(result);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             return result;
         }
     }
@@ -209,10 +209,13 @@ public class LogUtil {
         Buffer buffer = source.buffer();
         String result;
         if (isPlaintext(buffer)) {
-            Charset UTF_8 = StandardCharsets.UTF_8;
+            Charset UTF_8 = null;
             MediaType contentType = body.contentType();
             if (contentType != null) {
-                UTF_8 = contentType.charset(UTF_8);
+                UTF_8 = contentType.charset();
+            }
+            if (UTF_8 == null) {
+                UTF_8 = Charsets.UTF_8;
             }
             result = buffer.clone().readString(UTF_8);
             if (onResultDecoder) {
