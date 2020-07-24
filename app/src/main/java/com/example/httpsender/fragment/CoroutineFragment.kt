@@ -23,6 +23,7 @@ import rxhttp.toClass
 import rxhttp.toDownload
 import rxhttp.toStr
 import rxhttp.wrapper.param.RxHttp
+import rxhttp.wrapper.param.RxSimpleHttp
 import rxhttp.wrapper.param.toResponse
 import rxhttp.wrapper.param.upload
 import java.io.File
@@ -51,7 +52,7 @@ class CoroutineFragment : Fragment(), View.OnClickListener {
     }, {
         mBinding.tvResult.text = it.errorMsg
         //失败回调
-        it.show("图片加载失败,请稍后再试!")
+        it.show()
     })
 
     //发送Get请求，获取文章列表
@@ -64,7 +65,7 @@ class CoroutineFragment : Fragment(), View.OnClickListener {
     }, {
         mBinding.tvResult.text = it.errorMsg
         //失败回调
-        it.show("发送失败,请稍后再试!")
+        it.show()
     })
 
     //发送Post表单请求,根据关键字查询文章
@@ -77,7 +78,7 @@ class CoroutineFragment : Fragment(), View.OnClickListener {
     }, {
         mBinding.tvResult.text = it.errorMsg
         //失败回调
-        it.show("发送失败,请稍后再试!")
+        it.show()
     })
 
     //发送Post Json请求，此接口不通，仅用于调试参数
@@ -121,7 +122,7 @@ class CoroutineFragment : Fragment(), View.OnClickListener {
     }, {
         mBinding.tvResult.text = it.errorMsg
         //失败回调
-        it.show("发送失败,请稍后再试!")
+        it.show()
     })
 
     //发送Post JsonArray请求，此接口不通，仅用于调试参数
@@ -160,7 +161,7 @@ class CoroutineFragment : Fragment(), View.OnClickListener {
     }, {
         mBinding.tvResult.text = it.errorMsg
         //失败回调
-        it.show("发送失败,请稍后再试!")
+        it.show()
     })
 
     //使用XmlConverter解析数据，此接口返回数据太多，会有点慢
@@ -173,7 +174,7 @@ class CoroutineFragment : Fragment(), View.OnClickListener {
     }, {
         mBinding.tvResult.text = it.errorMsg
         //失败回调
-        it.show("发送失败,请稍后再试!")
+        it.show()
     })
 
     //使用XmlConverter解析数据
@@ -186,29 +187,29 @@ class CoroutineFragment : Fragment(), View.OnClickListener {
     }, {
         mBinding.tvResult.text = it.errorMsg
         //失败回调
-        it.show("发送失败,请稍后再试!")
+        it.show()
     })
 
     //文件下载，不带进度
     private fun download(view: View) = rxLifeScope.launch({
         val destPath = requireContext().externalCacheDir.toString() + "/" + System.currentTimeMillis() + ".apk"
-        val result = RxHttp.get("/miaolive/Miaolive.apk")
-            .setDomainToUpdateIfAbsent() //使用指定的域名
+        //下载使用非默认域名，故这里使用RxSimpleHttp类发送请求，RxSimpleHttp类是通过注解生成的
+        val result = RxSimpleHttp.get("/miaolive/Miaolive.apk")
             .toDownload(destPath)
             .await()
         mBinding.tvResult.text = "下载完成,路径$result"
     }, {
         mBinding.tvResult.text = it.errorMsg
         //失败回调
-        it.show("发送失败,请稍后再试!")
+        it.show()
     })
 
     //文件下载，带进度
     private fun downloadAndProgress(view: View) = rxLifeScope.launch({
         //文件存储路径
         val destPath = requireContext().externalCacheDir.toString() + "/" + System.currentTimeMillis() + ".apk"
-        val result = RxHttp.get("/miaolive/Miaolive.apk")
-            .setDomainToUpdateIfAbsent() //使用指定的域名
+        //下载使用非默认域名，故这里使用RxSimpleHttp类发送请求，RxSimpleHttp类是通过注解生成的
+        val result = RxSimpleHttp.get("/miaolive/Miaolive.apk")
             .toDownload(destPath, this) {
                 //下载进度回调,0-100，仅在进度有更新时才会回调，最多回调101次，最后一次回调文件存储路径
                 val currentProgress = it.progress //当前进度 0-100
@@ -221,15 +222,15 @@ class CoroutineFragment : Fragment(), View.OnClickListener {
     }, {
         mBinding.tvResult.append(it.errorMsg)
         //失败回调
-        it.show("发送失败,请稍后再试!")
+        it.show()
     })
 
     //断点下载
     private fun breakpointDownload(view: View) = rxLifeScope.launch({
         val destPath = requireContext().externalCacheDir.toString() + "/" + "Miaobo.apk"
         val length = File(destPath).length()
-        val result = RxHttp.get("/miaolive/Miaolive.apk")
-            .setDomainToUpdateIfAbsent() //使用指定的域名
+        //下载使用非默认域名，故这里使用RxSimpleHttp类发送请求，RxSimpleHttp类是通过注解生成的
+        val result = RxSimpleHttp.get("/miaolive/Miaolive.apk")
             .setRangeHeader(length) //设置开始下载位置，结束位置默认为文件末尾
             .toDownload(destPath) //注意这里使用DownloadParser解析器，并传入本地路径
             .await()
@@ -237,15 +238,15 @@ class CoroutineFragment : Fragment(), View.OnClickListener {
     }, {
         mBinding.tvResult.append(it.errorMsg)
         //失败回调
-        it.show("发送失败,请稍后再试!")
+        it.show()
     })
 
     //断点下载，带进度
     private fun breakpointDownloadAndProgress(view: View) = rxLifeScope.launch({
         val destPath = requireContext().externalCacheDir.toString() + "/" + "Miaobo.apk"
         val length = File(destPath).length()
-        val result = RxHttp.get("/miaolive/Miaolive.apk")
-            .setDomainToUpdateIfAbsent() //使用指定的域名
+        //下载使用非默认域名，故这里使用RxSimpleHttp类发送请求，RxSimpleHttp类是通过注解生成的
+        val result = RxSimpleHttp.get("/miaolive/Miaolive.apk")
             .setRangeHeader(length, true) //设置开始下载位置，结束位置默认为文件末尾
             .toDownload(destPath, this) {
                 //下载进度回调,0-100，仅在进度有更新时才会回调，最多回调101次，最后一次回调文件存储路径
@@ -259,7 +260,7 @@ class CoroutineFragment : Fragment(), View.OnClickListener {
     }, {
         mBinding.tvResult.append(it.errorMsg)
         //失败回调
-        it.show("发送失败,请稍后再试!")
+        it.show()
     })
 
     //文件上传，不带进度
@@ -274,7 +275,7 @@ class CoroutineFragment : Fragment(), View.OnClickListener {
         mBinding.tvResult.append("\n")
         mBinding.tvResult.append(it.errorMsg)
         //失败回调
-        it.show("上传失败,请稍后再试!")
+        it.show()
     })
 
     //上传文件，带进度
@@ -295,7 +296,7 @@ class CoroutineFragment : Fragment(), View.OnClickListener {
         mBinding.tvResult.append("\n")
         mBinding.tvResult.append(it.errorMsg)
         //失败回调
-        it.show("上传失败,请稍后再试!")
+        it.show()
     })
 
     private fun clearLog(view: View) {
