@@ -11,6 +11,7 @@ import java.lang.reflect.Type;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
+import rxhttp.RxHttpPlugins;
 import rxhttp.wrapper.callback.IConverter;
 
 /**
@@ -39,11 +40,15 @@ public class JacksonConverter implements IConverter {
     }
 
     @Override
-    public <T> T convert(ResponseBody body, Type type, boolean onResultDecoder) throws IOException {
+    public <T> T convert(ResponseBody body, Type type, boolean needDecodeResult) throws IOException {
         JavaType javaType = mapper.getTypeFactory().constructType(type);
         ObjectReader reader = mapper.readerFor(javaType);
         try {
-            return reader.readValue(body.charStream());
+            String result = body.string();
+            if (needDecodeResult) {
+                result = RxHttpPlugins.onResultDecoder(result);
+            }
+            return reader.readValue(result);
         } finally {
             body.close();
         }

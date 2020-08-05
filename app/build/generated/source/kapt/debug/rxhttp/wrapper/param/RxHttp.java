@@ -43,6 +43,7 @@ import rxhttp.wrapper.entity.ParameterizedTypeImpl;
 import rxhttp.wrapper.entity.Progress;
 import rxhttp.wrapper.entity.ProgressT;
 import rxhttp.wrapper.parse.Parser;
+import rxhttp.wrapper.parse.SimpleParser;
 
 /**
  * Github
@@ -138,6 +139,15 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
     return (R)this;
   }
 
+  /**
+   * For example:
+   *                                          
+   * ```                                                  
+   * RxHttp.get("/service/%1$s/...?pageSize=%2$s", 1, 20)   
+   *     .asString()                                      
+   *     .subscribe()                                     
+   * ```                                                  
+   */
   public static RxHttpNoBodyParam get(String url, Object... formatArgs) {
     return with(Param.get(format(url, formatArgs)));
   }
@@ -392,13 +402,26 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
     return (R)this;
   }
 
+  @Override
   public Response execute() throws IOException {
-    doOnStart();
     return newCall().execute();
   }
 
   public <T> T execute(Parser<T> parser) throws IOException {
     return parser.onParse(execute());
+  }
+
+  public String executeString() throws IOException {
+    return executeClass(String.class);
+  }
+
+  public <T> List<T> executeList(Class<T> type) throws IOException {
+    Type tTypeList = ParameterizedTypeImpl.get(List.class, type);
+    return execute(new SimpleParser<List<T>>(tTypeList));
+  }
+
+  public <T> T executeClass(Class<T> type) throws IOException {
+    return execute(new SimpleParser<T>(type));
   }
 
   public Call newCall() {
