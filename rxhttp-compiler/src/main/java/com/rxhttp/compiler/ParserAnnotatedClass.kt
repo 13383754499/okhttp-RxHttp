@@ -36,11 +36,10 @@ class ParserAnnotatedClass {
 
     fun getMethodList(filer: Filer): List<MethodSpec> {
         val t = TypeVariableName.get("T")
-        val classTName = ParameterizedTypeName.get(
-            ClassName.get(Class::class.java), t)
+        val className = ClassName.get(Class::class.java)
+        val classTName = ParameterizedTypeName.get(className, t)
 
-        val listTName = ParameterizedTypeName.get(
-            ClassName.get(List::class.java), t)
+        val listTName = ParameterizedTypeName.get(ClassName.get(List::class.java), t)
         val callName = ClassName.get("okhttp3", "Call")
         val okHttpClientName = ClassName.get("okhttp3", "OkHttpClient")
         val responseName = ClassName.get("okhttp3", "Response")
@@ -210,7 +209,7 @@ class ParserAnnotatedClass {
                     .addParameter(parserTName, "parser")
                     .addStatement("""
                         doOnStart();
-                    Observable<T> observable = new ObservableHttp<T>(okClient, param, parser);
+                    Observable<T> observable = new ObservableHttp<T>(getOkHttpClient(), param, parser);
                     if (scheduler != null) {
                         observable = observable.subscribeOn(scheduler);
                     }
@@ -235,7 +234,7 @@ class ParserAnnotatedClass {
                     .addParameter(consumerProgressName, "progressConsumer")
                     .addStatement("""
                         doOnStart();
-                    Observable<Progress> observable = new ObservableDownload(okClient, param, destPath, breakDownloadOffSize);
+                    Observable<Progress> observable = new ObservableDownload(getOkHttpClient(), param, destPath, breakDownloadOffSize);
                     if (scheduler != null)
                         observable = observable.subscribeOn(scheduler);
                     if (observeOnScheduler != null) {
@@ -279,7 +278,7 @@ class ParserAnnotatedClass {
                         ) {
                             //Type类型参数转Class<T>类型
                             val classTypeName = ParameterizedTypeName.get(
-                                ClassName.get(Class::class.java), typeVariableNames[typeIndex++])
+                                className, typeVariableNames[typeIndex++])
                             val parameterSpec = ParameterSpec
                                 .builder(classTypeName, variableNames.simpleName.toString())
                                 .build()
@@ -325,8 +324,8 @@ class ParserAnnotatedClass {
                             val onParserFunReturnWrapperType = if (onParserFunReturnType is ParameterizedTypeName) {
                                 //返回类型有n个泛型，需要对每个泛型再次包装
                                 val typeNames = ArrayList<TypeName>()
-                                for (type in onParserFunReturnType.typeArguments) {
-                                    typeNames.add(ParameterizedTypeName.get(wrapperClass, type))
+                                for (typeArg in onParserFunReturnType.typeArguments) {
+                                    typeNames.add(ParameterizedTypeName.get(wrapperClass, typeArg))
                                 }
                                 ParameterizedTypeName.get(onParserFunReturnType.rawType, *typeNames.toTypedArray())
                             } else {
@@ -340,8 +339,6 @@ class ParserAnnotatedClass {
                             methodName = "as$parserAlias${simpleName}"
 
                             //3、asXxx方法体
-                            val parameterizedType = ClassName.get("rxhttp.wrapper.entity", "ParameterizedTypeImpl")
-                            val type = ClassName.get("java.lang.reflect", "Type")
                             val funBody = CodeBlock.builder()
                             val paramsName = StringBuilder()
                             //遍历参数，取出参数名

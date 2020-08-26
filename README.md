@@ -28,6 +28,8 @@
 
 ***RxHttp&RxLife 交流群：378530627***
 
+***[Maven依赖点击这里](https://github.com/liujingxing/okhttp-RxHttp/blob/master/maven_dependency.md)***
+
 [遇到问题，点击这里，99%的问题都能自己解决](https://github.com/liujingxing/okhttp-RxHttp/wiki/FAQ)
 
 ***1、`OkHttp 3.14.x`以上版本, 最低要求为API 21，如你想要兼容21以下，请依赖`OkHttp 3.12.x`，该版本最低要求 API 9***
@@ -43,11 +45,11 @@ android {
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments = [
-                    //必须，告知RxHttp你依赖的okhttp版本，目前已适配 v3.12.0 - v4.7.2版本  (v4.3.0除外)
-                    rxhttp_okhttp: '4.7.2'，
+                    //必须，告知RxHttp你依赖的okhttp版本，目前已适配 v3.12.0 - v4.8.1版本  (v4.3.0除外)
+                    rxhttp_okhttp: '4.8.1'，
                     //使用asXxx方法时必须，告知RxHttp你依赖的rxjava版本，可传入rxjava2、rxjava3
                     rxhttp_rxjava: 'rxjava3'， 
-                    rxhttp_package: 'rxhttp'   //非必须，指定RxHttp相关类的生成路径，即包名
+                    rxhttp_package: 'rxhttp'   //非必须，指定RxHttp类包名
                 ]
             }
         }
@@ -60,9 +62,9 @@ android {
 }
 dependencies {
     //以下3个为必须，
-    implementation 'com.ljx.rxhttp:rxhttp:2.3.3'
-    implementation 'com.squareup.okhttp3:okhttp:4.7.2' //rxhttp v2.2.2版本起，需要手动依赖okhttp
-    kapt 'com.ljx.rxhttp:rxhttp-compiler:2.3.3' //生成RxHttp类，非kotlin项目，请使用annotationProcessor代替kapt
+    implementation 'com.ljx.rxhttp:rxhttp:2.3.5'
+    implementation 'com.squareup.okhttp3:okhttp:4.8.1' //rxhttp v2.2.2版本起，需要手动依赖okhttp
+    kapt 'com.ljx.rxhttp:rxhttp-compiler:2.3.5' //生成RxHttp类，非kotlin项目，请使用annotationProcessor代替kapt
     
     implementation 'com.ljx.rxlife:rxlife-coroutine:2.0.0' //管理协程生命周期，页面销毁，关闭请求
     
@@ -77,10 +79,11 @@ dependencies {
     implementation 'com.ljx.rxlife3:rxlife-rxjava:3.0.0' //管理RxJava3生命周期，页面销毁，关闭请求
 
     //非必须，根据自己需求选择 RxHttp默认内置了GsonConverter
-    implementation 'com.ljx.rxhttp:converter-jackson:2.3.3'
-    implementation 'com.ljx.rxhttp:converter-fastjson:2.3.3'
-    implementation 'com.ljx.rxhttp:converter-protobuf:2.3.3'
-    implementation 'com.ljx.rxhttp:converter-simplexml:2.3.3'
+    implementation 'com.ljx.rxhttp:converter-fastjson:2.3.5'
+    implementation 'com.ljx.rxhttp:converter-jackson:2.3.5'
+    implementation 'com.ljx.rxhttp:converter-moshi:2.3.5'
+    implementation 'com.ljx.rxhttp:converter-protobuf:2.3.5'
+    implementation 'com.ljx.rxhttp:converter-simplexml:2.3.5'
 }
 ```
 
@@ -116,14 +119,14 @@ wiki详细文档：https://github.com/liujingxing/okhttp-RxHttp/wiki  (此文档
 }
 
 # okhttp 4.7.0以下版本混淆规则
--keepclassmembers class okhttp3.internal.Version{
+-keepclassmembers class okhttp3.internal.Version {
     # 4.0.0<=version<4.7.0
     public static java.lang.String userAgent;
     # version<4.0.0
     public static java.lang.String userAgent();
 }
 # okhttp 4.0.0以下版本混淆规则
--keepclassmembers class okhttp3.internal.http.StatusLine{
+-keepclassmembers class okhttp3.internal.http.StatusLine {
     public static okhttp3.internal.http.StatusLine parse(java.lang.String);
 }
 ```

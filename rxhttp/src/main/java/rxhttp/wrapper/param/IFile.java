@@ -37,14 +37,14 @@ public interface IFile<P extends Param<P>> {
         return addFile(key, value, file.getAbsolutePath());
     }
 
-    default P addFile(String key, List<File> fileList) {
+    default P addFile(String key, List<? extends File> fileList) {
         for (File file : fileList) {
             addFile(new UpFile(key, file.getAbsolutePath()));
         }
         return (P) this;
     }
 
-    default P addFile(List<UpFile> upFileList) {
+    default P addFile(List<? extends UpFile> upFileList) {
         for (UpFile upFile : upFileList) {
             addFile(upFile);
         }
@@ -58,14 +58,6 @@ public interface IFile<P extends Param<P>> {
      * @return Param
      */
     P addFile(@NonNull UpFile upFile);
-
-    /**
-     * 根据key 移除已添加的文件
-     *
-     * @param key String
-     * @return Param
-     */
-    P removeFile(String key);
 
     P setUploadMaxLength(long maxLength);
 

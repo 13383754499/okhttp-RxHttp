@@ -34,7 +34,8 @@ class RxHttpExtensions {
 
         for (executableElement in getConstructorFun(typeElement)) {
 
-            if (executableElement.parameters.size == typeVariableNames.size
+            if (typeVariableNames.size > 0
+                && executableElement.parameters.size == typeVariableNames.size
                 && executableElement.modifiers.contains(Modifier.PUBLIC)
             ) {
                 var allTypeArg = true
@@ -61,7 +62,12 @@ class RxHttpExtensions {
                     ).build()
                     parameterList.add(parameterSpec)
                 } else {
-                    parameterList.add(ParameterSpec.get(it))
+                    val name = it.simpleName.toString()
+                    val type = it.asType().asTypeName().toKClassTypeName()
+                    val parameterSpec = ParameterSpec.builder(name, type)
+                        .jvmModifiers(it.modifiers)
+                        .build()
+                    parameterList.add(parameterSpec)
                 }
             }
 
@@ -76,14 +82,16 @@ class RxHttpExtensions {
                 "return asParser(object: %T${getTypeVariableString(typeVariableNames)}(${getParamsName(parameterList)}) {})"
             }
 
-            asFunList.add(
-                FunSpec.builder("as$key")
-                    .addModifiers(modifiers)
-                    .receiver(baseRxHttpName)
-                    .addParameters(parameterList)
-                    .addStatement(funBody, typeElement.asClassName()) //方法里面的表达式
-                    .addTypeVariables(getTypeVariableNames(typeVariableNames))
-                    .build())
+            if (typeVariableNames.size > 0) {  //对声明了泛型的解析器，生成kotlin编写的asXxx方法
+                asFunList.add(
+                    FunSpec.builder("as$key")
+                        .addModifiers(modifiers)
+                        .receiver(baseRxHttpName)
+                        .addParameters(parameterList)
+                        .addStatement(funBody, typeElement.asClassName()) //方法里面的表达式
+                        .addTypeVariables(getTypeVariableNames(typeVariableNames))
+                        .build())
+            }
 
             funBody = if (typeVariableNames.size == 0 || executableElement.modifiers.contains(Modifier.PUBLIC)) {
                 "return %T(%T${getTypeVariableString(typeVariableNames)}(${getParamsName(parameterList)}))"
@@ -121,35 +129,6 @@ class RxHttpExtensions {
 
         val fileBuilder = FileSpec.builder(rxHttpPackage, "RxHttp")
         if (isDependenceRxJava()) {
-            val schedulerName = getKClassName("Scheduler")
-            val observableName = getKClassName("Observable")
-            val consumerName = getKClassName("Consumer")
-            val observableTName = observableName.parameterizedBy(t)
-            val observeOnScheduler = ParameterSpec.builder("observeOnScheduler", schedulerName.copy(nullable = true))
-                .defaultValue("null")
-                .build()
-
-            fileBuilder.addImport("kotlinx.coroutines", "suspendCancellableCoroutine")
-            fileBuilder.addImport("kotlin.coroutines", "resume", "resumeWithException")
-            fileBuilder.addFunction(FunSpec.builder("await")
-                .addModifiers(KModifier.SUSPEND)
-                .receiver(observableTName)
-                .addTypeVariable(t)
-                .addStatement("""
-                return suspendCancellableCoroutine { continuation ->
-                    val subscribe = subscribe({                      
-                        continuation.resume(it)                     
-                    }, {                                             
-                        continuation.resumeWithException(it)        
-                    })                                              
-                                                                    
-                    continuation.invokeOnCancellation {              
-                        subscribe.dispose()                         
-                    }                                               
-                }                                                   
-            """.trimIndent())
-                .returns(t)
-                .build())
 
             fileBuilder.addFunction(FunSpec.builder("executeList")
                 .addModifiers(KModifier.INLINE)
