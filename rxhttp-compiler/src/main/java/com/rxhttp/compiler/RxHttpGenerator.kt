@@ -10,9 +10,10 @@ import javax.lang.model.element.Modifier
 import javax.lang.model.element.VariableElement
 import kotlin.Any
 import kotlin.Boolean
+import kotlin.ByteArray
 import kotlin.Int
-import kotlin.Long
 import kotlin.String
+import kotlin.Throws
 
 class RxHttpGenerator {
     private var mParamsAnnotatedClass: ParamsAnnotatedClass? = null
@@ -46,12 +47,10 @@ class RxHttpGenerator {
     }
 
 
-
     @Throws(IOException::class)
-    fun generateCode(filer: Filer, okHttpVersion: String) {
+    fun generateCode(filer: Filer, okHttpVersion: String, isAndroidPlatform: Boolean) {
         val httpSenderName = ClassName.get("rxhttp", "HttpSender")
         val rxHttpPluginsName = ClassName.get("rxhttp", "RxHttpPlugins")
-        val okHttpClientName = ClassName.get("okhttp3", "OkHttpClient")
         val converterName = ClassName.get("rxhttp.wrapper.callback", "IConverter")
         val functionsName = ClassName.get("rxhttp.wrapper.callback", "Function")
         val jsonObjectName = ClassName.get("com.google.gson", "JsonObject")
@@ -59,24 +58,18 @@ class RxHttpGenerator {
         val stringName = ClassName.get(String::class.java)
         val objectName = ClassName.get(Any::class.java)
         val timeUnitName = ClassName.get("java.util.concurrent", "TimeUnit")
-        val mapKVName = ParameterizedTypeName.get(functionsName, paramName, paramName)
+        val paramTName = ParameterizedTypeName.get(paramName, TypeVariableName.get("?"))
+        val mapKVName = ParameterizedTypeName.get(functionsName, paramTName, paramTName)
         val mapStringName = ParameterizedTypeName.get(functionsName, stringName, stringName)
         val subObject = WildcardTypeName.subtypeOf(TypeName.get(Any::class.java))
         val listName = ParameterizedTypeName.get(ClassName.get(MutableList::class.java), subObject)
         val listObjectName = ParameterizedTypeName.get(ClassName.get(MutableList::class.java), objectName)
-        val t = TypeVariableName.get("T")
-        val progressName = ClassName.get("rxhttp.wrapper.entity", "Progress")
-        val progressTName = ClassName.get("rxhttp.wrapper.entity", "ProgressT")
-        val progressTTName = ParameterizedTypeName.get(progressTName, t)
 
-        val parserName = ClassName.get("rxhttp.wrapper.parse", "Parser")
-        val parserTName = ParameterizedTypeName.get(parserName, t)
         val upFileName = ClassName.get("rxhttp.wrapper.entity", "UpFile")
         val subUpFile = WildcardTypeName.subtypeOf(upFileName)
         val listUpFileName = ParameterizedTypeName.get(ClassName.get(MutableList::class.java), subUpFile)
         val subFile = WildcardTypeName.subtypeOf(TypeName.get(File::class.java))
         val listFileName = ParameterizedTypeName.get(ClassName.get(MutableList::class.java), subFile)
-        val mapName = ParameterizedTypeName.get(ClassName.get(MutableMap::class.java), stringName, subObject)
         val noBodyParamName = ClassName.get(packageName, "NoBodyParam")
         val rxHttpNoBodyName = ClassName.get(rxHttpPackage, "RxHttpNoBodyParam")
         val formParamName = ClassName.get(packageName, "FormParam")
@@ -86,13 +79,18 @@ class RxHttpGenerator {
         val jsonArrayParamName = ClassName.get(packageName, "JsonArrayParam")
         val rxHttpJsonArrayName = ClassName.get(rxHttpPackage, "RxHttpJsonArrayParam")
         val rxHttpNoBody = ParameterizedTypeName.get(RXHTTP, noBodyParamName, rxHttpNoBodyName)
-        val rxHttpForm = ParameterizedTypeName.get(RXHTTP, formParamName, rxHttpFormName)
-        val rxHttpJson = ParameterizedTypeName.get(RXHTTP, jsonParamName, rxHttpJsonName)
-        val rxHttpJsonArray = ParameterizedTypeName.get(RXHTTP, jsonArrayParamName, rxHttpJsonArrayName)
+        val rxHttpForm = ParameterizedTypeName.get(RXHTTP_BODY_PARAM, formParamName, rxHttpFormName)
+        val rxHttpJson = ParameterizedTypeName.get(RXHTTP_BODY_PARAM, jsonParamName, rxHttpJsonName)
+        val rxHttpJsonArray = ParameterizedTypeName.get(RXHTTP_BODY_PARAM, jsonArrayParamName, rxHttpJsonArrayName)
 
+        val nullableName = ClassName.get("rxhttp.wrapper.annotations", "Nullable")
+        val okHttpClientName = ClassName.get("okhttp3", "OkHttpClient")
         val partName = ClassName.get("okhttp3.MultipartBody", "Part")
+        val mediaTypeName = ClassName.get("okhttp3", "MediaType")
         val requestBodyName = ClassName.get("okhttp3", "RequestBody")
         val headersName = ClassName.get("okhttp3", "Headers")
+        val requestName = ClassName.get("okhttp3", "Request")
+        val cacheInterceptorName = ClassName.get("rxhttp.wrapper.intercept", "CacheInterceptor")
 
         val methodList = ArrayList<MethodSpec>() //方法集合
 
@@ -198,26 +196,35 @@ class RxHttpGenerator {
 
         methodList.add(
             MethodSpec.methodBuilder("getOkHttpClient")
-                .addAnnotation(Override::class.java)
                 .addModifiers(Modifier.PUBLIC)
-                .addStatement("""
-                            final OkHttpClient okHttpClient = okClient;
-                        OkHttpClient.Builder builder = null;
-                        if (connectTimeoutMillis != 0) {
-                          if (builder == null) builder = okHttpClient.newBuilder();
-                          builder.connectTimeout(connectTimeoutMillis, ${'$'}T.MILLISECONDS);
-                        }
-                        if (readTimeoutMillis != 0) {
-                          if (builder == null) builder = okHttpClient.newBuilder();
-                          builder.readTimeout(readTimeoutMillis, ${'$'}T.MILLISECONDS);
-                        }
+                .addCode("""
+                    if (realOkClient != null) return realOkClient;
+                    final OkHttpClient okHttpClient = okClient;
+                    OkHttpClient.Builder builder = null;
+                    
+                    if (connectTimeoutMillis != 0) {
+                      if (builder == null) builder = okHttpClient.newBuilder();
+                      builder.connectTimeout(connectTimeoutMillis, ${'$'}T.MILLISECONDS);
+                    }
+                    
+                    if (readTimeoutMillis != 0) {
+                      if (builder == null) builder = okHttpClient.newBuilder();
+                      builder.readTimeout(readTimeoutMillis, ${'$'}T.MILLISECONDS);
+                    }
 
-                        if (writeTimeoutMillis != 0) {
-                          if (builder == null) builder = okHttpClient.newBuilder();
-                          builder.writeTimeout(writeTimeoutMillis, ${'$'}T.MILLISECONDS);
-                        }
-                        return builder != null ? builder.build() : okHttpClient
-                """.trimIndent(), timeUnitName, timeUnitName, timeUnitName)
+                    if (writeTimeoutMillis != 0) {
+                      if (builder == null) builder = okHttpClient.newBuilder();
+                      builder.writeTimeout(writeTimeoutMillis, ${'$'}T.MILLISECONDS);
+                    }
+                    
+                    if (param.getCacheMode() != CacheMode.ONLY_NETWORK) {                      
+                      if (builder == null) builder = okHttpClient.newBuilder();              
+                      builder.addInterceptor(new ${'$'}T(param.getCacheStrategy()));
+                    }
+                                                                                            
+                    realOkClient = builder != null ? builder.build() : okHttpClient;
+                    return realOkClient;
+                """.trimIndent(), timeUnitName, timeUnitName, timeUnitName, cacheInterceptorName)
                 .returns(okHttpClientName).build())
 
         if (isDependenceRxJava()) {
@@ -232,7 +239,7 @@ class RxHttpGenerator {
             methodList.add(
                 MethodSpec.methodBuilder("isDisposed")
                     .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                    .addParameter(disposableName,"disposable")
+                    .addParameter(disposableName, "disposable")
                     .addStatement("return disposable == null || disposable.isDisposed()")
                     .returns(Boolean::class.java).build())
         }
@@ -288,9 +295,6 @@ class RxHttpGenerator {
         val okHttpClientSpec = FieldSpec.builder(okHttpClientName, "okClient", Modifier.PRIVATE)
             .initializer("\$T.getOkHttpClient()", httpSenderName)
             .build()
-        val breakDownloadOffSize = FieldSpec.builder(Long::class.javaPrimitiveType, "breakDownloadOffSize", Modifier.PRIVATE) //添加变量
-            .initializer("0L")
-            .build()
         val build = AnnotationSpec.builder(SuppressWarnings::class.java)
             .addMember("value", "\"unchecked\"")
             .build()
@@ -327,7 +331,13 @@ class RxHttpGenerator {
                 """.trimIndent(), diskLruCacheFactoryName, diskLruCacheName, taskRunnerName)
             }
         }
-        val rxHttpBuilder = TypeSpec.classBuilder(CLASSNAME)
+
+        val isAsyncField = FieldSpec
+            .builder(Boolean::class.javaPrimitiveType, "isAsync", Modifier.PROTECTED)
+            .initializer("true")
+            .build()
+
+        val rxHttpBuilder = TypeSpec.classBuilder(RXHttp_CLASS_NAME)
             .addJavadoc("""
                 Github
                 https://github.com/liujingxing/RxHttp
@@ -342,19 +352,11 @@ class RxHttpGenerator {
             .addField(Int::class.javaPrimitiveType, "connectTimeoutMillis", Modifier.PRIVATE)
             .addField(Int::class.javaPrimitiveType, "readTimeoutMillis", Modifier.PRIVATE)
             .addField(Int::class.javaPrimitiveType, "writeTimeoutMillis", Modifier.PRIVATE)
+            .addField(okHttpClientName, "realOkClient", Modifier.PRIVATE)
             .addField(okHttpClientSpec)
-
-        if (isDependenceRxJava()) {
-            val schedulerName = getClassName("Scheduler")
-            val schedulersName = getClassName("Schedulers")
-            val schedulerField = FieldSpec.builder(schedulerName, "scheduler", Modifier.PROTECTED)
-                .initializer("\$T.io()", schedulersName)
-                .addJavadoc("The request is executed on the IO thread by default\n")
-                .build()
-            rxHttpBuilder.addField(schedulerField)
-        }
-        rxHttpBuilder.addField(converterSpec)
-            .addField(breakDownloadOffSize)
+            .addField(isAsyncField)
+            .addField(converterSpec)
+            .addField(requestName, "request", Modifier.PUBLIC)
             .superclass(baseRxHttpName)
             .addTypeVariable(p)
             .addTypeVariable(r)
@@ -373,43 +375,11 @@ class RxHttpGenerator {
                 .build())
 
         methodList.add(
-            MethodSpec.methodBuilder("add")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(String::class.java, "key")
-                .addParameter(Any::class.java, "value")
-                .addStatement("param.add(key,value)")
-                .addStatement("return this")
-                .returns(rxHttpNoBodyName)
-                .build())
-
-        methodList.add(
             MethodSpec.methodBuilder("addEncoded")
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(String::class.java, "key")
                 .addParameter(Any::class.java, "value")
                 .addStatement("param.addEncoded(key,value)")
-                .addStatement("return this")
-                .returns(rxHttpNoBodyName)
-                .build())
-
-        methodList.add(
-            MethodSpec.methodBuilder("add")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(String::class.java, "key")
-                .addParameter(Any::class.java, "value")
-                .addParameter(Boolean::class.javaPrimitiveType, "isAdd")
-                .beginControlFlow("if(isAdd)")
-                .addStatement("param.add(key,value)")
-                .endControlFlow()
-                .addStatement("return this")
-                .returns(rxHttpNoBodyName)
-                .build())
-
-        methodList.add(
-            MethodSpec.methodBuilder("addAll")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(mapName, "map")
-                .addStatement("param.addAll(map)")
                 .addStatement("return this")
                 .returns(rxHttpNoBodyName)
                 .build())
@@ -490,43 +460,11 @@ class RxHttpGenerator {
                 .build())
 
         methodList.add(
-            MethodSpec.methodBuilder("add")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(String::class.java, "key")
-                .addParameter(Any::class.java, "value")
-                .addStatement("param.add(key,value)")
-                .addStatement("return this")
-                .returns(rxHttpFormName)
-                .build())
-
-        methodList.add(
             MethodSpec.methodBuilder("addEncoded")
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(String::class.java, "key")
                 .addParameter(Any::class.java, "value")
                 .addStatement("param.addEncoded(key,value)")
-                .addStatement("return this")
-                .returns(rxHttpFormName)
-                .build())
-
-        methodList.add(
-            MethodSpec.methodBuilder("add")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(String::class.java, "key")
-                .addParameter(Any::class.java, "value")
-                .addParameter(Boolean::class.javaPrimitiveType, "isAdd")
-                .beginControlFlow("if(isAdd)")
-                .addStatement("param.add(key,value)")
-                .endControlFlow()
-                .addStatement("return this")
-                .returns(rxHttpFormName)
-                .build())
-
-        methodList.add(
-            MethodSpec.methodBuilder("addAll")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(mapName, "map")
-                .addStatement("param.addAll(map)")
                 .addStatement("return this")
                 .returns(rxHttpFormName)
                 .build())
@@ -666,6 +604,164 @@ class RxHttpGenerator {
                 .returns(rxHttpFormName)
                 .build())
 
+
+        val mediaTypeParam = ParameterSpec.builder(mediaTypeName, "contentType")
+            .addAnnotation(nullableName)
+            .build()
+
+        methodList.add(
+            MethodSpec.methodBuilder("addPart")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(mediaTypeParam)
+                .addParameter(ByteArray::class.java, "content")
+                .addStatement("param.addPart(contentType, content)")
+                .addStatement("return this")
+                .returns(rxHttpFormName)
+                .build())
+
+        methodList.add(
+            MethodSpec.methodBuilder("addPart")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(mediaTypeParam)
+                .addParameter(ByteArray::class.java, "content")
+                .addParameter(Int::class.java, "offset")
+                .addParameter(Int::class.java, "byteCount")
+                .addStatement("param.addPart(contentType, content, offset, byteCount)")
+                .addStatement("return this")
+                .returns(rxHttpFormName)
+                .build())
+
+        if (isAndroidPlatform) {
+
+            val contextName = ClassName.get("android.content", "Context")
+            val uriName = ClassName.get("android.net", "Uri")
+
+            val subUri = WildcardTypeName.subtypeOf(uriName)
+            val listUriName = ParameterizedTypeName.get(ClassName.get(MutableList::class.java), subUri)
+            val mapUriName = ParameterizedTypeName.get(ClassName.get(MutableMap::class.java), stringName, subUri)
+
+            val kotlinExtensionsName = ClassName.get("rxhttp.wrapper.utils", "KotlinExtensions")
+            val mapEntryName = ClassName.get("java.util.Map", "Entry")
+
+            methodList.add(
+                MethodSpec.methodBuilder("addPart")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(contextName, "context")
+                    .addParameter(uriName, "uri")
+                    .addStatement("param.addPart(\$T.asRequestBody(uri, context))", kotlinExtensionsName)
+                    .addStatement("return this")
+                    .returns(rxHttpFormName)
+                    .build())
+
+            methodList.add(
+                MethodSpec.methodBuilder("addPart")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(contextName, "context")
+                    .addParameter(String::class.java, "name")
+                    .addParameter(uriName, "uri")
+                    .addStatement("param.addPart(\$T.asPart(uri, context, name))", kotlinExtensionsName)
+                    .addStatement("return this")
+                    .returns(rxHttpFormName)
+                    .build())
+
+            methodList.add(
+                MethodSpec.methodBuilder("addPart")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(contextName, "context")
+                    .addParameter(uriName, "uri")
+                    .addParameter(mediaTypeParam)
+                    .addStatement("param.addPart(\$T.asRequestBody(uri, context, contentType))", kotlinExtensionsName)
+                    .addStatement("return this")
+                    .returns(rxHttpFormName)
+                    .build())
+
+            methodList.add(
+                MethodSpec.methodBuilder("addPart")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(contextName, "context")
+                    .addParameter(String::class.java, "name")
+                    .addParameter(uriName, "uri")
+                    .addParameter(mediaTypeParam)
+                    .addStatement("param.addPart(\$T.asPart(uri, context, name, contentType))", kotlinExtensionsName)
+                    .addStatement("return this")
+                    .returns(rxHttpFormName)
+                    .build())
+
+            methodList.add(
+                MethodSpec.methodBuilder("addParts")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(contextName, "context")
+                    .addParameter(mapUriName, "uriMap")
+                    .addCode("""
+                        for (${"$"}T<String, ? extends Uri> entry : uriMap.entrySet()) {
+                            addPart(context, entry.getKey(), entry.getValue());       
+                        }
+                        return this;
+                    """.trimIndent(),mapEntryName)
+                    .returns(rxHttpFormName)
+                    .build())
+
+            methodList.add(
+                MethodSpec.methodBuilder("addParts")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(contextName, "context")
+                    .addParameter(listUriName, "uris")
+                    .addCode("""
+                        for (Uri uri : uris) {    
+                            addPart(context, uri);
+                        }
+                        return this;                         
+                    """.trimIndent())
+                    .returns(rxHttpFormName)
+                    .build())
+
+            methodList.add(
+                MethodSpec.methodBuilder("addParts")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(contextName, "context")
+                    .addParameter(String::class.java, "name")
+                    .addParameter(listUriName, "uris")
+                    .addCode("""
+                        for (Uri uri : uris) {          
+                            addPart(context, name, uri);
+                        }
+                        return this;                               
+                    """.trimIndent())
+                    .returns(rxHttpFormName)
+                    .build())
+
+            methodList.add(
+                MethodSpec.methodBuilder("addParts")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(contextName, "context")
+                    .addParameter(listUriName, "uris")
+                    .addParameter(mediaTypeParam)
+                    .addCode("""
+                        for (Uri uri : uris) {                 
+                            addPart(context, uri, contentType);
+                        }
+                        return this;                                      
+                    """.trimIndent())
+                    .returns(rxHttpFormName)
+                    .build())
+
+            methodList.add(
+                MethodSpec.methodBuilder("addParts")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(contextName, "context")
+                    .addParameter(String::class.java, "name")
+                    .addParameter(listUriName, "uris")
+                    .addParameter(mediaTypeParam)
+                    .addCode("""
+                        for (Uri uri : uris) {                       
+                            addPart(context, name, uri, contentType);
+                        }
+                        return this;                                            
+                    """.trimIndent())
+                    .returns(rxHttpFormName)
+                    .build())
+        }
+
         methodList.add(
             MethodSpec.methodBuilder("addPart")
                 .addModifiers(Modifier.PUBLIC)
@@ -713,79 +809,6 @@ class RxHttpGenerator {
                 .returns(rxHttpFormName)
                 .build())
 
-        methodList.add(
-            MethodSpec.methodBuilder("setUploadMaxLength")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(Long::class.javaPrimitiveType, "maxLength")
-                .addStatement("param.setUploadMaxLength(maxLength)")
-                .addStatement("return this")
-                .returns(rxHttpFormName)
-                .build())
-
-        if (isDependenceRxJava()) {
-            val observableName = getClassName("Observable")
-            val schedulerName = getClassName("Scheduler")
-            val consumerName = getClassName("Consumer")
-            val consumerProgressName = ParameterizedTypeName.get(consumerName, progressName)
-            val observableTName = ParameterizedTypeName.get(observableName, t)
-
-            methodList.add(
-                MethodSpec.methodBuilder("upload")
-                    .addModifiers(Modifier.PUBLIC)
-                    .addParameter(consumerProgressName, "progressConsumer")
-                    .addStatement("return upload(progressConsumer, null)")
-                    .returns(rxHttpFormName)
-                    .build())
-
-            methodList.add(
-                MethodSpec.methodBuilder("upload")
-                    .addAnnotation(Deprecated::class.java)
-                    .addJavadoc("@deprecated please user {@link #upload(Scheduler,Consumer)} instead\n")
-                    .addModifiers(Modifier.PUBLIC)
-                    .addParameter(consumerProgressName, "progressConsumer")
-                    .addParameter(schedulerName, "observeOnScheduler")
-                    .addStatement("return upload(observeOnScheduler, progressConsumer)")
-                    .returns(rxHttpFormName)
-                    .build())
-
-            methodList.add(
-                MethodSpec.methodBuilder("upload")
-                    .addJavadoc("监听上传进度")
-                    .addJavadoc("\n@param progressConsumer   进度回调")
-                    .addJavadoc("\n@param observeOnScheduler 用于控制下游回调所在线程(包括进度回调) ，仅当 progressConsumer 不为 null 时生效")
-                    .addModifiers(Modifier.PUBLIC)
-                    .addParameter(schedulerName, "observeOnScheduler")
-                    .addParameter(consumerProgressName, "progressConsumer")
-                    .addStatement("this.progressConsumer = progressConsumer")
-                    .addStatement("this.observeOnScheduler = observeOnScheduler")
-                    .addStatement("return this")
-                    .returns(rxHttpFormName)
-                    .build())
-
-            methodList.add(
-                MethodSpec.methodBuilder("asParser")
-                    .addModifiers(Modifier.PUBLIC)
-                    .addAnnotation(Override::class.java)
-                    .addTypeVariable(t)
-                    .addParameter(parserTName, "parser")
-                    .addStatement("""
-                        if (progressConsumer == null) {
-                        return super.asParser(parser);
-                    }
-                    doOnStart();
-                    Observable<Progress> observable = new ObservableUpload<T>(getOkHttpClient(), param, parser);
-                    if (scheduler != null)
-                        observable = observable.subscribeOn(scheduler);
-                    if (observeOnScheduler != null) {
-                        observable = observable.observeOn(observeOnScheduler);
-                    }
-                    return observable.doOnNext(progressConsumer)
-                        .filter(progress -> progress instanceof ProgressT)
-                        .map(progress -> ((${"$"}T) progress).getResult())
-                """.trimIndent(), progressTTName)
-                    .returns(observableTName)
-                    .build())
-        }
         val rxHttpFormSpec = TypeSpec.classBuilder("RxHttpFormParam")
             .addJavadoc("""
                 Github
@@ -798,24 +821,8 @@ class RxHttpGenerator {
             .superclass(rxHttpForm)
             .addMethods(methodList)
 
-        if (isDependenceRxJava()) {
-            val schedulerName = getClassName("Scheduler")
-            val consumerName = getClassName("Consumer")
-            val consumerProgressName = ParameterizedTypeName.get(consumerName, progressName)
-            val observeOnSchedulerField = FieldSpec
-                .builder(schedulerName, "observeOnScheduler", Modifier.PRIVATE)
-                .addJavadoc("用于控制下游回调所在线程(包括进度回调)，仅当{@link progressConsumer}不为 null 时生效")
-                .build()
-            val progressConsumerField = FieldSpec
-                .builder(consumerProgressName, "progressConsumer", Modifier.PRIVATE)
-                .addJavadoc("用于监听上传进度回调")
-                .build()
-            rxHttpFormSpec.addField(observeOnSchedulerField)
-                .addField(progressConsumerField)
-        }
         JavaFile.builder(rxHttpPackage, rxHttpFormSpec.build())
             .build().writeTo(filer)
-
 
         methodList.clear()
 
@@ -824,38 +831,6 @@ class RxHttpGenerator {
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(jsonParamName, "param")
                 .addStatement("super(param)")
-                .build())
-
-        methodList.add(
-            MethodSpec.methodBuilder("add")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(String::class.java, "key")
-                .addParameter(Any::class.java, "value")
-                .addStatement("param.add(key,value)")
-                .addStatement("return this")
-                .returns(rxHttpJsonName)
-                .build())
-
-        methodList.add(
-            MethodSpec.methodBuilder("add")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(String::class.java, "key")
-                .addParameter(Any::class.java, "value")
-                .addParameter(Boolean::class.javaPrimitiveType, "isAdd")
-                .beginControlFlow("if(isAdd)")
-                .addStatement("param.add(key,value)")
-                .endControlFlow()
-                .addStatement("return this")
-                .returns(rxHttpJsonName)
-                .build())
-
-        methodList.add(
-            MethodSpec.methodBuilder("addAll")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(mapName, "map")
-                .addStatement("param.addAll(map)")
-                .addStatement("return this")
-                .returns(rxHttpJsonName)
                 .build())
 
         methodList.add(
@@ -920,38 +895,6 @@ class RxHttpGenerator {
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(Any::class.java, "object")
                 .addStatement("param.add(object)")
-                .addStatement("return this")
-                .returns(rxHttpJsonArrayName)
-                .build())
-
-        methodList.add(
-            MethodSpec.methodBuilder("add")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(String::class.java, "key")
-                .addParameter(Any::class.java, "value")
-                .addStatement("param.add(key,value)")
-                .addStatement("return this")
-                .returns(rxHttpJsonArrayName)
-                .build())
-
-        methodList.add(
-            MethodSpec.methodBuilder("add")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(String::class.java, "key")
-                .addParameter(Any::class.java, "value")
-                .addParameter(Boolean::class.javaPrimitiveType, "isAdd")
-                .beginControlFlow("if(isAdd)")
-                .addStatement("param.add(key,value)")
-                .endControlFlow()
-                .addStatement("return this")
-                .returns(rxHttpJsonArrayName)
-                .build())
-
-        methodList.add(
-            MethodSpec.methodBuilder("addAll")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(mapName, "map")
-                .addStatement("param.addAll(map)")
                 .addStatement("return this")
                 .returns(rxHttpJsonArrayName)
                 .build())
@@ -1031,9 +974,10 @@ class RxHttpGenerator {
     }
 }
 
-private const val CLASSNAME = "RxHttp"
+const val RXHttp_CLASS_NAME = "RxHttp"
 const val packageName = "rxhttp.wrapper.param"
-var RXHTTP = ClassName.get(rxHttpPackage, CLASSNAME)
+var RXHTTP = ClassName.get(rxHttpPackage, RXHttp_CLASS_NAME)
+var RXHTTP_BODY_PARAM = ClassName.get(rxHttpPackage, "RxHttpBodyParam")
 private val paramName = ClassName.get(packageName, "Param")
 var p = TypeVariableName.get("P", paramName)  //泛型P
 var r = TypeVariableName.get("R", RXHTTP)     //泛型R

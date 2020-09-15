@@ -40,7 +40,10 @@ class ParamsAnnotatedClass {
         val jsonArrayParamName = ClassName.get(packageName, "JsonArrayParam")
         val cacheModeName = ClassName.get("rxhttp.wrapper.cahce", "CacheMode")
         val cacheStrategyName = ClassName.get("rxhttp.wrapper.cahce", "CacheStrategy")
+        val downloadOffSizeName = ClassName.get("rxhttp.wrapper.entity", "DownloadOffSize")
         val stringName = TypeName.get(String::class.java)
+        val subObject = WildcardTypeName.subtypeOf(TypeName.get(Any::class.java))
+        val mapName = ParameterizedTypeName.get(ClassName.get(MutableMap::class.java), stringName, subObject)
         val mapStringName = ParameterizedTypeName.get(ClassName.get(MutableMap::class.java), stringName, stringName)
         val methodList = ArrayList<MethodSpec>()
         val methodMap = LinkedHashMap<String, String>()
@@ -140,10 +143,18 @@ class ParamsAnnotatedClass {
             val rxHttpParam = when (superclass.toString()) {
                 "rxhttp.wrapper.param.FormParam" -> ClassName.get(rxHttpPackage, "RxHttpFormParam")
                 "rxhttp.wrapper.param.JsonParam" -> ClassName.get(rxHttpPackage, "RxHttpJsonParam")
+                "rxhttp.wrapper.param.JsonArrayParam" -> ClassName.get(rxHttpPackage, "RxHttpJsonArrayParam")
                 "rxhttp.wrapper.param.NoBodyParam" -> ClassName.get(rxHttpPackage, "RxHttpNoBodyParam")
                 else -> {
-                    prefix = "param."
-                    ParameterizedTypeName.get(RXHTTP, param, rxHttpParamName)
+                    val typeName = TypeName.get(superclass)
+                    if ((typeName as? ParameterizedTypeName)?.rawType?.toString() == "rxhttp.wrapper.param.BodyParam") {
+                        prefix = "param."
+                        val rxHttpBodyParam = ClassName.get(rxHttpPackage, "RxHttpBodyParam")
+                        ParameterizedTypeName.get(rxHttpBodyParam, param, rxHttpParamName)
+                    } else {
+                        prefix = "param."
+                        ParameterizedTypeName.get(RXHTTP, param, rxHttpParamName)
+                    }
                 }
             }
             val rxHttpPostCustomMethod = ArrayList<MethodSpec>()
@@ -260,6 +271,38 @@ class ParamsAnnotatedClass {
                 .build())
 
         methodList.add(
+            MethodSpec.methodBuilder("add")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(String::class.java, "key")
+                .addParameter(Any::class.java, "value")
+                .addStatement("param.add(key,value)")
+                .addStatement("return (R)this")
+                .returns(rxHttp)
+                .build())
+
+        methodList.add(
+            MethodSpec.methodBuilder("add")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(String::class.java, "key")
+                .addParameter(Any::class.java, "value")
+                .addParameter(Boolean::class.javaPrimitiveType, "isAdd")
+                .beginControlFlow("if(isAdd)")
+                .addStatement("param.add(key,value)")
+                .endControlFlow()
+                .addStatement("return (R)this")
+                .returns(rxHttp)
+                .build())
+
+        methodList.add(
+            MethodSpec.methodBuilder("addAll")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(mapName, "map")
+                .addStatement("param.addAll(map)")
+                .addStatement("return (R)this")
+                .returns(rxHttp)
+                .build())
+
+        methodList.add(
             MethodSpec.methodBuilder("addHeader")
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(String::class.java, "line")
@@ -367,18 +410,13 @@ class ParamsAnnotatedClass {
                 .addParameter(Long::class.javaPrimitiveType, "startIndex")
                 .addParameter(Long::class.javaPrimitiveType, "endIndex")
                 .addParameter(Boolean::class.javaPrimitiveType, "connectLastProgress")
-                .addStatement("param.setRangeHeader(startIndex,endIndex)")
-                .addStatement("if(connectLastProgress) breakDownloadOffSize = startIndex")
-                .addStatement("return (R)this")
+                .addCode("""
+                    param.setRangeHeader(startIndex, endIndex);                         
+                    if (connectLastProgress)                                            
+                      param.tag(DownloadOffSize.class, new ${'$'}T(startIndex));
+                    return (R) this;                                                    
+                """.trimIndent(), downloadOffSizeName)
                 .returns(rxHttp).build())
-
-        methodList.add(
-            MethodSpec.methodBuilder("getBreakDownloadOffSize")
-                .addAnnotation(Override::class.java)
-                .addModifiers(Modifier.PUBLIC)
-                .addStatement("return breakDownloadOffSize")
-                .returns(Long::class.javaPrimitiveType)
-                .build())
 
         methodList.add(
             MethodSpec.methodBuilder("removeAllHeader")

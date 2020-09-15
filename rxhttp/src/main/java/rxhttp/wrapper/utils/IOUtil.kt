@@ -2,6 +2,8 @@
 
 package rxhttp.wrapper.utils
 
+import android.content.Context
+import android.net.Uri
 import java.io.*
 
 /**
@@ -14,9 +16,9 @@ object IOUtil {
 
     @JvmStatic
     fun copy(inStream: InputStream, outStream: OutputStream): Int {
-        val buffer = ByteArray(1024 * 8)
-        val bis = BufferedInputStream(inStream, 1024 * 8)
-        val bos = BufferedOutputStream(outStream, 1024 * 8)
+        val buffer = ByteArray(LENGTH_BYTE)
+        val bis = BufferedInputStream(inStream, LENGTH_BYTE)
+        val bos = BufferedOutputStream(outStream, LENGTH_BYTE)
         var count = 0
         var n = 0
         try {
@@ -87,8 +89,8 @@ object IOUtil {
     @JvmStatic
     @JvmOverloads
     @Throws(IOException::class)
-    fun write(inStream: InputStream, path: String, append: Boolean = false): Boolean {
-        return write(inStream, File(path), append)
+    fun write(inStream: InputStream, path: String, append: Boolean = false, progress: ((Long) -> Unit)? = null): Boolean {
+        return write(inStream, File(path), append, progress)
     }
 
     /**
@@ -103,25 +105,56 @@ object IOUtil {
     @JvmStatic
     @JvmOverloads
     @Throws(IOException::class)
-    fun write(inStream: InputStream, dstFile: File, append: Boolean = false): Boolean {
+    fun write(inStream: InputStream, dstFile: File, append: Boolean = false, progress: ((Long) -> Unit)? = null): Boolean {
         val parentFile = dstFile.parentFile
         if (!parentFile.exists() && !parentFile.mkdirs()) {
             throw IOException("Directory $parentFile create fail")
         }
-        return write(inStream, FileOutputStream(dstFile, append))
+        return write(inStream, FileOutputStream(dstFile, append), progress)
     }
 
     @JvmStatic
     @Throws(IOException::class)
-    fun write(inStream: InputStream?, outStream: OutputStream?): Boolean {
+    fun write(inStream: InputStream?, outStream: OutputStream?, progress: ((Long) -> Unit)? = null): Boolean {
         if (inStream == null || outStream == null) {
             throw IllegalArgumentException("inStream or outStream can not be null")
         }
         return try {
             val bytes = ByteArray(LENGTH_BYTE)
+            var totalReadLength: Long = 0
             var readLength: Int
             while (inStream.read(bytes, 0, bytes.size).also { readLength = it } != -1) {
                 outStream.write(bytes, 0, readLength)
+                progress?.apply {
+                    totalReadLength += readLength;
+                    invoke(totalReadLength)
+                }
+            }
+            true
+        } finally {
+            close(inStream, outStream)
+        }
+    }
+
+    @Throws(IOException::class)
+    suspend fun suspendWrite(
+        inStream: InputStream?,
+        outStream: OutputStream?,
+        progress: (suspend (Long) -> Unit)? = null
+    ): Boolean {
+        if (inStream == null || outStream == null) {
+            throw IllegalArgumentException("inStream or outStream can not be null")
+        }
+        return try {
+            val bytes = ByteArray(8 * 1024)
+            var totalReadLength: Long = 0
+            var readLength: Int
+            while (inStream.read(bytes, 0, bytes.size).also { readLength = it } != -1) {
+                outStream.write(bytes, 0, readLength)
+                progress?.apply {
+                    totalReadLength += readLength;
+                    invoke(totalReadLength)
+                }
             }
             true
         } finally {

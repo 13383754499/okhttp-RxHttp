@@ -3,6 +3,7 @@ package com.rxhttp.compiler
 import com.squareup.javapoet.*
 import rxhttp.wrapper.annotation.Parser
 import java.io.IOException
+import java.lang.Deprecated
 import java.util.*
 import javax.annotation.processing.Filer
 import javax.lang.model.element.ElementKind
@@ -11,7 +12,9 @@ import javax.lang.model.element.Modifier
 import javax.lang.model.element.TypeElement
 import javax.lang.model.type.MirroredTypesException
 import javax.lang.model.type.TypeMirror
+import kotlin.String
 import kotlin.collections.ArrayList
+import kotlin.require
 
 class ParserAnnotatedClass {
 
@@ -41,15 +44,13 @@ class ParserAnnotatedClass {
 
         val listTName = ParameterizedTypeName.get(ClassName.get(List::class.java), t)
         val callName = ClassName.get("okhttp3", "Call")
-        val okHttpClientName = ClassName.get("okhttp3", "OkHttpClient")
         val responseName = ClassName.get("okhttp3", "Response")
-        val httpSenderName = ClassName.get("rxhttp", "HttpSender")
         val requestName = ClassName.get("okhttp3", "Request")
         val parserName = ClassName.get("rxhttp.wrapper.parse", "Parser")
         val progressName = ClassName.get("rxhttp.wrapper.entity", "Progress")
-        val progressTName = ClassName.get("rxhttp.wrapper.entity", "ProgressT")
+        val logUtilName = ClassName.get("rxhttp.wrapper.utils", "LogUtil")
+        val logTimeName = ClassName.get("rxhttp.wrapper.utils", "LogTime")
         val typeName = TypeName.get(String::class.java)
-        val progressTStringName = ParameterizedTypeName.get(progressTName, typeName)
         val parserTName = ParameterizedTypeName.get(parserName, t)
         val simpleParserName = ClassName.get("rxhttp.wrapper.parse", "SimpleParser")
         val type = ClassName.get("java.lang.reflect", "Type")
@@ -58,7 +59,6 @@ class ParserAnnotatedClass {
 
         methodList.add(
             MethodSpec.methodBuilder("execute")
-                .addAnnotation(Override::class.java)
                 .addModifiers(Modifier.PUBLIC)
                 .addException(IOException::class.java)
                 .addStatement("return newCall().execute()")
@@ -106,30 +106,37 @@ class ParserAnnotatedClass {
 
         methodList.add(
             MethodSpec.methodBuilder("newCall")
-                .addModifiers(Modifier.PUBLIC)
-                .addStatement("return newCall(getOkHttpClient())")
-                .returns(callName)
-                .build())
-
-        methodList.add(
-            MethodSpec.methodBuilder("newCall")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(okHttpClientName, "okHttp")
-                .addStatement("return \$T.newCall(okHttp, buildRequest())", httpSenderName)
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addCode("""
+                    Request request = buildRequest();
+                    OkHttpClient okClient = getOkHttpClient();
+                    return okClient.newCall(request);
+                """.trimIndent())
                 .returns(callName)
                 .build())
 
         methodList.add(
             MethodSpec.methodBuilder("buildRequest")
-                .addAnnotation(Override::class.java)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .addStatement("doOnStart()")
-                .addStatement("return param.buildRequest()")
+                .addCode(
+                    """
+                    if (request == null) {
+                        doOnStart();
+                        request = param.buildRequest();
+                    }
+                    if (${"$"}T.isDebug()) {
+                        request = request.newBuilder()
+                            .tag(LogTime.class, new ${"$"}T())
+                            .build();
+                    }
+                    return request;
+                """.trimIndent(), logUtilName, logTimeName)
                 .returns(requestName)
                 .build())
 
         methodList.add(
             MethodSpec.methodBuilder("doOnStart")
+                .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
                 .addJavadoc("请求开始前内部调用，用于添加默认域名等操作\n")
                 .addStatement("setConverter(param)")
                 .addStatement("addDefaultDomainIfAbsent(param)")
@@ -139,112 +146,45 @@ class ParserAnnotatedClass {
             val schedulerName = getClassName("Scheduler")
             val observableName = getClassName("Observable")
             val consumerName = getClassName("Consumer")
-            methodList.add(
-                MethodSpec.methodBuilder("subscribeOn")
-                    .addModifiers(Modifier.PUBLIC)
-                    .addParameter(schedulerName, "scheduler")
-                    .addStatement("this.scheduler=scheduler")
-                    .addStatement("return (R)this")
-                    .returns(r)
-                    .build())
 
             methodList.add(
                 MethodSpec.methodBuilder("subscribeOnCurrent")
-                    .addJavadoc("设置在当前线程发请求\n")
+                    .addAnnotation(Deprecated::class.java)
+                    .addJavadoc("@deprecated please user {@link #setSync()} instead\n")
                     .addModifiers(Modifier.PUBLIC)
-                    .addStatement("this.scheduler=null")
-                    .addStatement("return (R)this")
+                    .addStatement("return setSync()")
                     .returns(r)
                     .build())
 
             methodList.add(
-                MethodSpec.methodBuilder("subscribeOnIo")
+                MethodSpec.methodBuilder("setSync")
+                    .addJavadoc("sync request \n")
                     .addModifiers(Modifier.PUBLIC)
-                    .addStatement("this.scheduler=Schedulers.io()")
-                    .addStatement("return (R)this")
-                    .returns(r)
-                    .build())
-
-            methodList.add(
-                MethodSpec.methodBuilder("subscribeOnComputation")
-                    .addModifiers(Modifier.PUBLIC)
-                    .addStatement("this.scheduler=Schedulers.computation()")
-                    .addStatement("return (R)this")
-                    .returns(r)
-                    .build())
-
-            methodList.add(
-                MethodSpec.methodBuilder("subscribeOnNewThread")
-                    .addModifiers(Modifier.PUBLIC)
-                    .addStatement("this.scheduler=Schedulers.newThread()")
-                    .addStatement("return (R)this")
-                    .returns(r)
-                    .build())
-
-            methodList.add(
-                MethodSpec.methodBuilder("subscribeOnSingle")
-                    .addModifiers(Modifier.PUBLIC)
-                    .addStatement("this.scheduler=Schedulers.single()")
-                    .addStatement("return (R)this")
-                    .returns(r)
-                    .build())
-
-            methodList.add(
-                MethodSpec.methodBuilder("subscribeOnTrampoline")
-                    .addModifiers(Modifier.PUBLIC)
-                    .addStatement("this.scheduler=Schedulers.trampoline()")
+                    .addStatement("isAsync = false")
                     .addStatement("return (R)this")
                     .returns(r)
                     .build())
 
             val observableTName = ParameterizedTypeName.get(observableName, t)
-            val observableStringName = ParameterizedTypeName.get(observableName, typeName)
             val consumerProgressName = ParameterizedTypeName.get(consumerName, progressName)
 
             methodList.add(
                 MethodSpec.methodBuilder("asParser")
-                    .addAnnotation(Override::class.java)
                     .addModifiers(Modifier.PUBLIC)
                     .addTypeVariable(t)
                     .addParameter(parserTName, "parser")
-                    .addStatement("""
-                        doOnStart();
-                    Observable<T> observable = new ObservableHttp<T>(getOkHttpClient(), param, parser);
-                    if (scheduler != null) {
-                        observable = observable.subscribeOn(scheduler);
-                    }
-                    return observable
-                """.trimIndent())
-                    .returns(observableTName)
-                    .build())
-
-            methodList.add(
-                MethodSpec.methodBuilder("asDownload")
-                    .addAnnotation(Override::class.java)
-                    .addJavadoc("""
-                         监听下载进度时，调用此方法                                                                 
-                         @param destPath           文件存储路径                                              
-                         @param observeOnScheduler 控制回调所在线程，传入null，则默认在请求所在线程(子线程)回调                   
-                         @param progressConsumer   进度回调                                                
-                         @return Observable
-                    """.trimIndent())
-                    .addModifiers(Modifier.PUBLIC)
-                    .addParameter(String::class.java, "destPath")
-                    .addParameter(schedulerName, "observeOnScheduler")
+                    .addParameter(schedulerName, "scheduler")
                     .addParameter(consumerProgressName, "progressConsumer")
-                    .addStatement("""
-                        doOnStart();
-                    Observable<Progress> observable = new ObservableDownload(getOkHttpClient(), param, destPath, breakDownloadOffSize);
-                    if (scheduler != null)
-                        observable = observable.subscribeOn(scheduler);
-                    if (observeOnScheduler != null) {
-                        observable = observable.observeOn(observeOnScheduler);
-                    }
-                    return observable.doOnNext(progressConsumer)
-                        .filter(progress -> progress instanceof ProgressT)
-                        .map(progress -> ((${"$"}T) progress).getResult())
-                """.trimIndent(), progressTStringName)
-                    .returns(observableStringName)
+                    .addCode("""
+                        ObservableCall observableCall;                                      
+                        if (isAsync) {                                                      
+                          observableCall = new ObservableCallEnqueue(this);                 
+                        } else {                                                            
+                          observableCall = new ObservableCallExecute(this);                 
+                        }                                                                   
+                        return observableCall.asParser(parser, scheduler, progressConsumer);
+                    """.trimIndent())
+                    .returns(observableTName)
                     .build())
         }
 
@@ -315,12 +255,20 @@ class ParserAnnotatedClass {
                     //有泛型且有Class类型参数
                     if (typeVariableNames.isNotEmpty() && haveClassTypeParam) {
 
+                        val wrapperListClass: MutableList<ClassName> = mutableListOf()
+                        wrapperListClass.add(ClassName.get("java.util", "List"))
+
                         //泛型的包裹类型，取自Parser注解的wrappers字段
-                        val wrapperTypes = mTypeMap[parserAlias]
-                        wrapperTypes?.forEach { mirror ->
+                        mTypeMap[parserAlias]?.forEach { mirror ->
+                            val tempClassName = ClassName.bestGuess(mirror.toString())
+                            if (!wrapperListClass.contains(tempClassName)) {
+                                wrapperListClass.add(tempClassName)
+                            }
+                        }
+
+                        wrapperListClass.forEach { wrapperClass ->
 
                             //1、asXxx方法返回值
-                            val wrapperClass = ClassName.bestGuess(mirror.toString())
                             val onParserFunReturnWrapperType = if (onParserFunReturnType is ParameterizedTypeName) {
                                 //返回类型有n个泛型，需要对每个泛型再次包装
                                 val typeNames = ArrayList<TypeName>()
@@ -334,7 +282,7 @@ class ParserAnnotatedClass {
                             asFunReturnType = ParameterizedTypeName.get(getClassName("Observable"), onParserFunReturnWrapperType)
 
                             //2、asXxx方法名
-                            val name = mirror.toString()
+                            val name = wrapperClass.toString()
                             val simpleName = name.substring(name.lastIndexOf(".") + 1)
                             methodName = "as$parserAlias${simpleName}"
 
@@ -357,7 +305,7 @@ class ParserAnnotatedClass {
                                 paramsName.append(", ")
                             }
                             paramsName.delete(paramsName.length - 2, paramsName.length)
-                            val returnStatement = "return asParser(new \$T${getTypeVariableString(typeVariableNames, mirror)}($paramsName))"
+                            val returnStatement = "return asParser(new \$T${getTypeVariableString(typeVariableNames, wrapperClass)}($paramsName))"
                             funBody.addStatement(returnStatement, ClassName.get(typeElement))
 
                             //4、生成asXxx方法
@@ -403,8 +351,8 @@ class ParserAnnotatedClass {
     }
 
     //获取泛型字符串 比如:<T> 、<K,V>等等
-    private fun getTypeVariableString(typeVariableNames: ArrayList<TypeVariableName>, mirror: TypeMirror): String {
-        val name = mirror.toString()
+    private fun getTypeVariableString(typeVariableNames: ArrayList<TypeVariableName>, wrapperClass: ClassName): String {
+        val name = wrapperClass.toString()
         val simpleName = name.substring(name.lastIndexOf(".") + 1)
 
         val type = StringBuilder()

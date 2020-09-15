@@ -1,22 +1,21 @@
 package rxhttp.wrapper.param;
 
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.core.Scheduler;
-import io.reactivex.rxjava3.functions.Consumer;
+import android.content.Context;
+import android.net.Uri;
 import java.io.File;
 import java.lang.Deprecated;
 import java.lang.Object;
-import java.lang.Override;
 import java.lang.String;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import okhttp3.Headers;
+import okhttp3.MediaType;
 import okhttp3.MultipartBody.Part;
 import okhttp3.RequestBody;
-import rxhttp.wrapper.entity.Progress;
-import rxhttp.wrapper.entity.ProgressT;
+import rxhttp.wrapper.annotations.Nullable;
 import rxhttp.wrapper.entity.UpFile;
-import rxhttp.wrapper.parse.Parser;
+import rxhttp.wrapper.utils.KotlinExtensions;
 
 /**
  * Github
@@ -25,40 +24,13 @@ import rxhttp.wrapper.parse.Parser;
  * https://github.com/liujingxing/okhttp-RxHttp/wiki/FAQ
  * https://github.com/liujingxing/okhttp-RxHttp/wiki/更新日志
  */
-public class RxHttpFormParam extends RxHttp<FormParam, RxHttpFormParam> {
-  /**
-   * 用于控制下游回调所在线程(包括进度回调)，仅当{@link progressConsumer}不为 null 时生效
-   */
-  private Scheduler observeOnScheduler;
-
-  /**
-   * 用于监听上传进度回调
-   */
-  private Consumer<Progress> progressConsumer;
-
+public class RxHttpFormParam extends RxHttpBodyParam<FormParam, RxHttpFormParam> {
   public RxHttpFormParam(FormParam param) {
     super(param);
   }
 
-  public RxHttpFormParam add(String key, Object value) {
-    param.add(key,value);
-    return this;
-  }
-
   public RxHttpFormParam addEncoded(String key, Object value) {
     param.addEncoded(key,value);
-    return this;
-  }
-
-  public RxHttpFormParam add(String key, Object value, boolean isAdd) {
-    if(isAdd) {
-      param.add(key,value);
-    }
-    return this;
-  }
-
-  public RxHttpFormParam addAll(Map<String, ?> map) {
-    param.addAll(map);
     return this;
   }
 
@@ -134,6 +106,75 @@ public class RxHttpFormParam extends RxHttp<FormParam, RxHttpFormParam> {
     return this;
   }
 
+  public RxHttpFormParam addPart(@Nullable MediaType contentType, byte[] content) {
+    param.addPart(contentType, content);
+    return this;
+  }
+
+  public RxHttpFormParam addPart(@Nullable MediaType contentType, byte[] content, int offset,
+      int byteCount) {
+    param.addPart(contentType, content, offset, byteCount);
+    return this;
+  }
+
+  public RxHttpFormParam addPart(Context context, Uri uri) {
+    param.addPart(KotlinExtensions.asRequestBody(uri, context));
+    return this;
+  }
+
+  public RxHttpFormParam addPart(Context context, String name, Uri uri) {
+    param.addPart(KotlinExtensions.asPart(uri, context, name));
+    return this;
+  }
+
+  public RxHttpFormParam addPart(Context context, Uri uri, @Nullable MediaType contentType) {
+    param.addPart(KotlinExtensions.asRequestBody(uri, context, contentType));
+    return this;
+  }
+
+  public RxHttpFormParam addPart(Context context, String name, Uri uri,
+      @Nullable MediaType contentType) {
+    param.addPart(KotlinExtensions.asPart(uri, context, name, contentType));
+    return this;
+  }
+
+  public RxHttpFormParam addParts(Context context, Map<String, ? extends Uri> uriMap) {
+    for (Entry<String, ? extends Uri> entry : uriMap.entrySet()) {
+        addPart(context, entry.getKey(), entry.getValue());       
+    }
+    return this;
+  }
+
+  public RxHttpFormParam addParts(Context context, List<? extends Uri> uris) {
+    for (Uri uri : uris) {    
+        addPart(context, uri);
+    }
+    return this;                         
+  }
+
+  public RxHttpFormParam addParts(Context context, String name, List<? extends Uri> uris) {
+    for (Uri uri : uris) {          
+        addPart(context, name, uri);
+    }
+    return this;                               
+  }
+
+  public RxHttpFormParam addParts(Context context, List<? extends Uri> uris,
+      @Nullable MediaType contentType) {
+    for (Uri uri : uris) {                 
+        addPart(context, uri, contentType);
+    }
+    return this;                                      
+  }
+
+  public RxHttpFormParam addParts(Context context, String name, List<? extends Uri> uris,
+      @Nullable MediaType contentType) {
+    for (Uri uri : uris) {                       
+        addPart(context, name, uri, contentType);
+    }
+    return this;                                            
+  }
+
   public RxHttpFormParam addPart(Part part) {
     param.addPart(part);
     return this;
@@ -157,50 +198,5 @@ public class RxHttpFormParam extends RxHttp<FormParam, RxHttpFormParam> {
   public RxHttpFormParam setMultiForm() {
     param.setMultiForm();
     return this;
-  }
-
-  public RxHttpFormParam setUploadMaxLength(long maxLength) {
-    param.setUploadMaxLength(maxLength);
-    return this;
-  }
-
-  public RxHttpFormParam upload(Consumer<Progress> progressConsumer) {
-    return upload(progressConsumer, null);
-  }
-
-  /**
-   * @deprecated please user {@link #upload(Scheduler,Consumer)} instead
-   */
-  @Deprecated
-  public RxHttpFormParam upload(Consumer<Progress> progressConsumer, Scheduler observeOnScheduler) {
-    return upload(observeOnScheduler, progressConsumer);
-  }
-
-  /**
-   * 监听上传进度
-   * @param progressConsumer   进度回调
-   * @param observeOnScheduler 用于控制下游回调所在线程(包括进度回调) ，仅当 progressConsumer 不为 null 时生效
-   */
-  public RxHttpFormParam upload(Scheduler observeOnScheduler, Consumer<Progress> progressConsumer) {
-    this.progressConsumer = progressConsumer;
-    this.observeOnScheduler = observeOnScheduler;
-    return this;
-  }
-
-  @Override
-  public <T> Observable<T> asParser(Parser<T> parser) {
-        if (progressConsumer == null) {
-            return super.asParser(parser);
-        }
-        doOnStart();
-        Observable<Progress> observable = new ObservableUpload<T>(getOkHttpClient(), param, parser);
-        if (scheduler != null)
-            observable = observable.subscribeOn(scheduler);
-        if (observeOnScheduler != null) {
-            observable = observable.observeOn(observeOnScheduler);
-        }
-        return observable.doOnNext(progressConsumer)
-            .filter(progress -> progress instanceof ProgressT)
-            .map(progress -> ((ProgressT<T>) progress).getResult());
   }
 }

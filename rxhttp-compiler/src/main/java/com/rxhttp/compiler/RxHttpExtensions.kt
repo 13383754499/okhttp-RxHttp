@@ -19,7 +19,6 @@ class RxHttpExtensions {
     private val anyTypeName = Any::class.asTypeName()
 
     private val baseRxHttpName = ClassName(rxHttpPackage, "BaseRxHttp")
-    private val iRxHttpName = ClassName("rxhttp", "IRxHttp")
     private val toFunList = ArrayList<FunSpec>()
     private val asFunList = ArrayList<FunSpec>()
 
@@ -121,29 +120,39 @@ class RxHttpExtensions {
         val progressName = ClassName("rxhttp.wrapper.entity", "Progress")
         val simpleParserName = ClassName("rxhttp.wrapper.parse", "SimpleParser")
         val coroutineScopeName = ClassName("kotlinx.coroutines", "CoroutineScope")
-        val progressCallbackName = ClassName("rxhttp.wrapper.callback", "ProgressCallback")
-        val rxhttpFormParam = ClassName(rxHttpPackage, "RxHttpFormParam");
+
+        val p = TypeVariableName("P")
+        val r = TypeVariableName("R")
+        val bodyParamName = ClassName("rxhttp.wrapper.param", "BodyParam").parameterizedBy(p)
+        val rxHttpBodyParamName = ClassName(rxHttpPackage, "RxHttpBodyParam").parameterizedBy(p, r)
+        val pBound = TypeVariableName("P", bodyParamName)
+        val rBound = TypeVariableName("R", rxHttpBodyParamName)
+
 
         val progressLambdaName: LambdaTypeName = LambdaTypeName.get(parameters = *arrayOf(progressName),
             returnType = Unit::class.asClassName())
 
         val fileBuilder = FileSpec.builder(rxHttpPackage, "RxHttp")
-        if (isDependenceRxJava()) {
 
-            fileBuilder.addFunction(FunSpec.builder("executeList")
+        val wildcard = TypeVariableName("*")
+        val rxHttpName = ClassName(rxHttpPackage, RXHttp_CLASS_NAME).parameterizedBy(wildcard, wildcard)
+        fileBuilder.addFunction(
+            FunSpec.builder("executeList")
                 .addModifiers(KModifier.INLINE)
-                .receiver(iRxHttpName)
+                .receiver(rxHttpName)
                 .addTypeVariable(t.copy(reified = true))
                 .addStatement("return executeClass<List<T>>()")
                 .build())
 
-            fileBuilder.addFunction(FunSpec.builder("executeClass")
+        fileBuilder.addFunction(
+            FunSpec.builder("executeClass")
                 .addModifiers(KModifier.INLINE)
-                .receiver(iRxHttpName)
+                .receiver(rxHttpName)
                 .addTypeVariable(t.copy(reified = true))
-                .addStatement("return object : %T<T>() {}.onParse(execute())", simpleParserName)
+                .addStatement("return execute(object : %T<T>() {})", simpleParserName)
                 .build())
 
+        if (isDependenceRxJava()) {
             fileBuilder.addFunction(FunSpec.builder("asList")
                 .addModifiers(KModifier.INLINE)
                 .receiver(baseRxHttpName)
@@ -177,19 +186,19 @@ class RxHttpExtensions {
                     调用此方法监听上传进度                                                    
                     @param coroutine  CoroutineScope对象，用于开启协程回调进度，进度回调所在线程取决于协程所在线程
                     @param progress 进度回调  
-                    注意：此方法仅在协程环境下才生效                                         
                 """.trimIndent())
-                .receiver(rxhttpFormParam)
+                .receiver(rxHttpBodyParamName)
+                .addTypeVariable(pBound)
+                .addTypeVariable(rBound)
                 .addParameter("coroutine", coroutineScopeName)
                 .addParameter("progress", progressLambdaName.copy(suspending = true))
                 .addCode("""
-                    param.setProgressCallback(%T { currentProgress, currentSize, totalSize ->
-                        val p = Progress(currentProgress, currentSize, totalSize)
-                        coroutine.%T { progress(p) }
-                    })
-                    return this
-                    """.trimIndent(), progressCallbackName, launchName)
-                .returns(rxhttpFormParam)
+                    param.setProgressCallback {
+                        coroutine.%T { progress(it) }
+                    }
+                    return this as R
+                    """.trimIndent(), launchName)
+                .returns(r)
                 .build())
 
         toFunList.forEach {

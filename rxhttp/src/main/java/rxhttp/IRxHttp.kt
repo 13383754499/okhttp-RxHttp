@@ -1,19 +1,24 @@
 package rxhttp
 
+import android.content.Context
 import android.graphics.Bitmap
-import kotlinx.coroutines.CoroutineScope
+import android.net.Uri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import okhttp3.Call
 import okhttp3.Headers
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import okhttp3.Response
 import rxhttp.wrapper.OkHttpCompat
 import rxhttp.wrapper.await.AwaitImpl
-import rxhttp.wrapper.cahce.CacheStrategy
-import rxhttp.wrapper.callback.ProgressCallbackImpl
-import rxhttp.wrapper.callback.SuspendProgressCallbackImpl
+import rxhttp.wrapper.callback.FileOutputStreamFactory
+import rxhttp.wrapper.callback.OutputStreamFactory
+import rxhttp.wrapper.callback.UriOutputStreamFactory
 import rxhttp.wrapper.entity.Progress
+import rxhttp.wrapper.entity.ProgressT
 import rxhttp.wrapper.parse.*
-import java.io.IOException
+import kotlin.coroutines.CoroutineContext
 
 /**
  * User: ljx
@@ -22,18 +27,8 @@ import java.io.IOException
  */
 interface IRxHttp {
 
-    @Throws(IOException::class)
-    fun execute(): Response
+    fun newCall(): Call
 
-    fun buildRequest(): Request
-
-    //Breakpoint download progress offset
-    val breakDownloadOffSize: Long
-        get() = 0L
-
-    fun getCacheStrategy(): CacheStrategy
-
-    fun getOkHttpClient(): OkHttpClient
 }
 
 suspend fun IRxHttp.awaitBoolean(): Boolean = await()
@@ -67,16 +62,21 @@ suspend inline fun <reified T : Any> IRxHttp.await(): T = await(object : SimpleP
 suspend fun <T> IRxHttp.await(parser: Parser<T>): T = toParser(parser).await()
 
 suspend fun IRxHttp.awaitDownload(
-    destPath: String,
-    progress: ((Progress) -> Unit)? = null
-): String = toDownload(destPath, progress).await()
+    destPath: String
+): String = toDownload(destPath).await()
 
 suspend fun IRxHttp.awaitDownload(
     destPath: String,
-    coroutine: CoroutineScope,
+    context: CoroutineContext? = null,
     progress: suspend (Progress) -> Unit
-): String = toDownload(destPath, coroutine, progress).await()
+): String = toDownload(destPath, context, progress).await()
 
+suspend fun IRxHttp.awaitDownload(
+    context: Context,
+    uri: Uri,
+    coroutineContext: CoroutineContext? = null,
+    progress: suspend (Progress) -> Unit
+): Uri = toDownload(context, uri, coroutineContext, progress).await()
 
 fun IRxHttp.toBoolean(): IAwait<Boolean> = toClass()
 
@@ -117,34 +117,64 @@ inline fun <reified T : Any> IRxHttp.toClass(): IAwait<T> = toParser(object : Si
 
 /**
  * @param destPath Local storage path
- * @param progress Progress callback in IO thread callback
- */
-fun IRxHttp.toDownload(
-    destPath: String,
-    progress: ((Progress) -> Unit)? = null
-): IAwait<String> {
-    var okHttpClient = getOkHttpClient()
-    if (progress != null) {
-        okHttpClient = HttpSender.clone(okHttpClient, ProgressCallbackImpl(breakDownloadOffSize, progress))
-    }
-    return toParser(DownloadParser(destPath), okHttpClient)
-}
-
-/**
- * @param destPath Local storage path
- * @param coroutine Use to open a coroutine to control the thread on which the progress callback
+ * @param context Use to control the thread on which the progress callback
  * @param progress Progress callback in suspend method, The callback thread depends on the coroutine thread
  */
 fun IRxHttp.toDownload(
     destPath: String,
-    coroutine: CoroutineScope,
-    progress: suspend (Progress) -> Unit
-): IAwait<String> {
-    val clone = HttpSender.clone(getOkHttpClient(), SuspendProgressCallbackImpl(coroutine, breakDownloadOffSize, progress))
-    return toParser(DownloadParser(destPath), clone)
-}
+    context: CoroutineContext? = null,
+    progress: (suspend (ProgressT<String>) -> Unit)? = null
+): IAwait<String> = toSyncDownload(FileOutputStreamFactory(destPath), context, progress)
+    .flowOn(Dispatchers.IO)
 
+fun IRxHttp.toDownload(
+    context: Context,
+    uri: Uri,
+    coroutineContext: CoroutineContext? = null,
+    progress: (suspend (ProgressT<Uri>) -> Unit)? = null
+): IAwait<Uri> = toSyncDownload(UriOutputStreamFactory(context, uri), coroutineContext, progress)
+    .flowOn(Dispatchers.IO)
+
+fun <T> IRxHttp.toDownload(
+    osFactory: OutputStreamFactory<T>,
+    context: CoroutineContext? = null,
+    progress: (suspend (ProgressT<T>) -> Unit)? = null
+): IAwait<T> = toSyncDownload(osFactory, context, progress)
+    .flowOn(Dispatchers.IO)
+
+fun <T> IRxHttp.toSyncDownload(
+    osFactory: OutputStreamFactory<T>,
+    context: CoroutineContext? = null,
+    progress: (suspend (ProgressT<T>) -> Unit)? = null
+): IAwait<T> = toParser(SuspendStreamParser(osFactory, context, progress))
+
+fun IRxHttp.toDownloadFlow(
+    destPath: String,
+): Flow<ProgressT<String>> =
+    flow {
+        toSyncDownload(FileOutputStreamFactory(destPath)) { emit(it) }
+            .await()
+    }.flowOn(Dispatchers.IO)
+
+fun IRxHttp.toDownloadFlow(
+    context: Context,
+    uri: Uri,
+): Flow<ProgressT<Uri>> =
+    flow {
+        toSyncDownload(UriOutputStreamFactory(context, uri)) { emit(it) }
+            .await()
+    }.flowOn(Dispatchers.IO)
+
+fun <T> IRxHttp.toDownloadFlow(
+    osFactory: OutputStreamFactory<T>,
+): Flow<ProgressT<T>> =
+    flow {
+        toSyncDownload(osFactory) { emit(it) }
+            .await()
+    }.flowOn(Dispatchers.IO)
+
+//All of the above methods will eventually call this method.
 fun <T> IRxHttp.toParser(
     parser: Parser<T>,
-    client: OkHttpClient = getOkHttpClient()
-): IAwait<T> = AwaitImpl(this, parser, client)
+): IAwait<T> = AwaitImpl(this, parser)
+

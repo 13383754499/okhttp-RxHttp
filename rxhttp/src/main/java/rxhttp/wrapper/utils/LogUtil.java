@@ -9,7 +9,6 @@ import java.util.List;
 
 import kotlin.text.Charsets;
 import okhttp3.Headers;
-import okhttp3.HttpUrl.Builder;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.Request;
@@ -20,8 +19,8 @@ import okio.Buffer;
 import okio.BufferedSource;
 import rxhttp.Platform;
 import rxhttp.RxHttpPlugins;
-import rxhttp.wrapper.OkHttpCompat;
 import rxhttp.internal.RxHttpVersion;
+import rxhttp.wrapper.OkHttpCompat;
 import rxhttp.wrapper.annotations.NonNull;
 import rxhttp.wrapper.exception.HttpStatusCodeException;
 import rxhttp.wrapper.exception.ParseException;
@@ -43,7 +42,7 @@ public class LogUtil {
         isDebug = debug;
     }
 
-    public static boolean isIsDebug() {
+    public static boolean isDebug() {
         return isDebug;
     }
 
@@ -72,16 +71,18 @@ public class LogUtil {
     }
 
     //打印Http返回的正常结果
-    public static void log(@NonNull Response response, boolean onResultDecoder, String downloadPath) {
+    public static void log(@NonNull Response response, String body) {
         if (!isDebug) return;
         try {
             Request request = response.request();
             LogTime logTime = request.tag(LogTime.class);
             long tookMs = logTime != null ? logTime.tookMs() : 0;
-            String result = downloadPath != null ? downloadPath : getResult(response.body(), onResultDecoder);
+            String result = body != null ? body :
+                getResult(OkHttpCompat.requireBody(response), OkHttpCompat.needDecodeResult(response));
             StringBuilder builder = new StringBuilder()
                 .append("<------ ")
-                .append(RxHttpVersion.userAgent + " " + OkHttpCompat.getOkHttpUserAgent())
+                .append(RxHttpVersion.userAgent + " ")
+                .append(OkHttpCompat.getOkHttpUserAgent())
                 .append(" request end Method=")
                 .append(request.method())
                 .append(" Code=").append(response.code())
@@ -148,12 +149,12 @@ public class LogUtil {
         if (body instanceof ProgressRequestBody) {
             body = ((ProgressRequestBody) body).getRequestBody();
         }
-        Builder urlBuilder = request.url().newBuilder();
-
+        String url = request.url().toString();
         if (body instanceof MultipartBody) {
             MultipartBody multipartBody = (MultipartBody) body;
             List<MultipartBody.Part> parts = multipartBody.parts();
             StringBuilder fileBuilder = new StringBuilder();
+            StringBuilder paramBuilder = new StringBuilder();
             for (int i = 0, size = parts.size(); i < size; i++) {
                 MultipartBody.Part part = parts.get(i);
                 RequestBody requestBody = part.body();
@@ -178,28 +179,35 @@ public class LogUtil {
                     Buffer buffer = new Buffer();
                     requestBody.writeTo(buffer);
                     String value = buffer.readUtf8();
-                    urlBuilder.addQueryParameter(name, value);
+                    if (paramBuilder.length() == 0) {
+                        paramBuilder.append("\n\n");
+                    } else {
+                        paramBuilder.append("&");
+                    }
+                    paramBuilder.append(name).append("=").append(value);
                 } else {
-                    if (fileBuilder.length() > 0) {
+                    if (fileBuilder.length() == 0) {
+                        fileBuilder.append("\n\n");
+                    } else {
                         fileBuilder.append("&");
                     }
                     fileBuilder.append(name).append("=").append(fileName);
                 }
             }
-            return urlBuilder.toString() + "\n\nfiles = " + fileBuilder.toString();
+            return url + paramBuilder.toString() + fileBuilder.toString();
         }
 
         if (body != null) {
             Buffer buffer = new Buffer();
             body.writeTo(buffer);
             if (!isPlaintext(buffer)) {
-                return urlBuilder.toString() + "\n\n(binary "
+                return url + "\n\n(binary "
                     + body.contentLength() + "-byte body omitted)";
             } else {
-                return urlBuilder.toString() + "\n\n" + buffer.readUtf8();
+                return url + "\n\n" + buffer.readUtf8();
             }
         }
-        return urlBuilder.toString();
+        return url;
     }
 
     @SuppressWarnings("deprecation")
