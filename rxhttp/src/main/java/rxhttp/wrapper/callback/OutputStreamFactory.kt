@@ -9,7 +9,6 @@ import rxhttp.wrapper.entity.toWrapper
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.io.OutputStream
 
 /**
  * User: ljx
@@ -22,33 +21,50 @@ abstract class OutputStreamFactory<T> {
     abstract fun getOutputStream(response: Response): OutputStreamWrapper<T>
 }
 
-internal class UriOutputStreamFactory(
-    private val context: Context,
-    private val uri: Uri
+abstract class UriFactory(
+    val context: Context
 ) : OutputStreamFactory<Uri>() {
-    override fun getOutputStream(response: Response): OutputStreamWrapper<Uri> {
+
+    @Throws(IOException::class)
+    abstract fun insert(response: Response): Uri
+
+    open fun query(): Uri? = null
+
+    final override fun getOutputStream(response: Response): OutputStreamWrapper<Uri> {
         val append = response.header("Content-Range") != null
-        val os: OutputStream = context.contentResolver.openOutputStream(uri, if (append) "wa" else "w")
-        return os.toWrapper(uri)
+        return insert(response).toWrapper(context, append)
     }
 }
 
-internal class FileOutputStreamFactory(
-    private val localPath: String
-) : OutputStreamFactory<String>() {
-
-    override fun getOutputStream(response: Response): OutputStreamWrapper<String> {
-        val localPath = localPath.replaceSuffix(response)
-        //创建文件
-        val dstFile = File(localPath).apply {
-            val parentFile = parentFile
-            if (!parentFile.exists() && !parentFile.mkdirs()) {
-                throw IOException("Directory $parentFile create fail")
-            }
-        }
-        val append = OkHttpCompat.header(response, "Content-Range") != null
-        return FileOutputStream(dstFile, append).toWrapper(localPath)
+inline fun <T> newOutputStreamFactory(
+    crossinline uriFactory: (Response) -> OutputStreamWrapper<T>
+): OutputStreamFactory<T> = object : OutputStreamFactory<T>() {
+    override fun getOutputStream(response: Response): OutputStreamWrapper<T> {
+        return uriFactory(response)
     }
+}
+
+internal fun newOutputStreamFactory(
+    context: Context,
+    uri: Uri
+): OutputStreamFactory<Uri> = newOutputStreamFactory {
+    val append = it.header("Content-Range") != null
+    uri.toWrapper(context, append)
+}
+
+internal fun newOutputStreamFactory(
+    localPath: String
+): OutputStreamFactory<String> = newOutputStreamFactory {
+    val destPath = localPath.replaceSuffix(it)
+    //创建文件
+    val dstFile = File(destPath).apply {
+        val parentFile = parentFile
+        if (!parentFile.exists() && !parentFile.mkdirs()) {
+            throw IOException("Directory $parentFile create fail")
+        }
+    }
+    val append = OkHttpCompat.header(it, "Content-Range") != null
+    FileOutputStream(dstFile, append).toWrapper(destPath)
 }
 
 private fun String.replaceSuffix(response: Response): String {

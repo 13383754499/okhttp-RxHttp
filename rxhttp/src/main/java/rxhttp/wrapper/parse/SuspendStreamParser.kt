@@ -8,9 +8,8 @@ import kotlinx.coroutines.withContext
 import okhttp3.Response
 import okhttp3.ResponseBody
 import rxhttp.wrapper.OkHttpCompat
-import rxhttp.wrapper.callback.FileOutputStreamFactory
 import rxhttp.wrapper.callback.OutputStreamFactory
-import rxhttp.wrapper.callback.UriOutputStreamFactory
+import rxhttp.wrapper.callback.newOutputStreamFactory
 import rxhttp.wrapper.entity.OutputStreamWrapper
 import rxhttp.wrapper.entity.ProgressT
 import rxhttp.wrapper.exception.ExceptionHelper
@@ -36,14 +35,14 @@ class SuspendStreamParser<T>(
             destPath: String,
             coroutineContext: CoroutineContext? = null,
             progress: (suspend (ProgressT<String>) -> Unit)? = null,
-        ): SuspendStreamParser<String> = SuspendStreamParser(FileOutputStreamFactory(destPath), coroutineContext, progress)
+        ): SuspendStreamParser<String> = SuspendStreamParser(newOutputStreamFactory(destPath), coroutineContext, progress)
 
         operator fun get(
             context: Context,
             uri: Uri,
             coroutineContext: CoroutineContext? = null,
             progress: (suspend (ProgressT<Uri>) -> Unit)? = null,
-        ): SuspendStreamParser<Uri> = SuspendStreamParser(UriOutputStreamFactory(context, uri), coroutineContext, progress)
+        ): SuspendStreamParser<Uri> = SuspendStreamParser(newOutputStreamFactory(context, uri), coroutineContext, progress)
     }
 
     @Throws(IOException::class)
@@ -74,7 +73,7 @@ private suspend fun <T> Response.writeTo(
     IOUtil.suspendWrite(body.byteStream(), osWrapper.os) {
         val currentSize = it + offsetSize
         //当前进度 = 当前已读取的字节 / 总字节
-        val currentProgress = ((currentSize * 100f / contentLength)).toInt()
+        val currentProgress = ((currentSize * 100 / contentLength)).toInt()
         if (currentProgress > lastProgress) {
             lastProgress = currentProgress
             val p = ProgressT<T>(currentProgress, currentSize, contentLength)

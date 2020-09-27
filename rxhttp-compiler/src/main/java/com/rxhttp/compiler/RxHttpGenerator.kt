@@ -529,7 +529,7 @@ class RxHttpGenerator {
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(String::class.java, "key")
                 .addParameter(File::class.java, "file")
-                .addStatement("param.add(key,file)")
+                .addStatement("param.addFile(key,file)")
                 .addStatement("return this")
                 .returns(rxHttpFormName)
                 .build())
@@ -558,9 +558,9 @@ class RxHttpGenerator {
             MethodSpec.methodBuilder("addFile")
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(String::class.java, "key")
-                .addParameter(String::class.java, "value")
+                .addParameter(String::class.java, "filename")
                 .addParameter(String::class.java, "filePath")
-                .addStatement("param.addFile(key,value,filePath)")
+                .addStatement("param.addFile(key, filename, filePath)")
                 .addStatement("return this")
                 .returns(rxHttpFormName)
                 .build())
@@ -569,9 +569,9 @@ class RxHttpGenerator {
             MethodSpec.methodBuilder("addFile")
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(String::class.java, "key")
-                .addParameter(String::class.java, "value")
+                .addParameter(String::class.java, "filename")
                 .addParameter(File::class.java, "file")
-                .addStatement("param.addFile(key,value,file)")
+                .addStatement("param.addFile(key, filename, file)")
                 .addStatement("return this")
                 .returns(rxHttpFormName)
                 .build())
@@ -636,11 +636,10 @@ class RxHttpGenerator {
             val contextName = ClassName.get("android.content", "Context")
             val uriName = ClassName.get("android.net", "Uri")
 
-            val subUri = WildcardTypeName.subtypeOf(uriName)
-            val listUriName = ParameterizedTypeName.get(ClassName.get(MutableList::class.java), subUri)
-            val mapUriName = ParameterizedTypeName.get(ClassName.get(MutableMap::class.java), stringName, subUri)
+            val listUriName = ParameterizedTypeName.get(ClassName.get(MutableList::class.java), uriName)
+            val mapUriName = ParameterizedTypeName.get(ClassName.get(MutableMap::class.java), stringName, uriName)
 
-            val kotlinExtensionsName = ClassName.get("rxhttp.wrapper.utils", "KotlinExtensions")
+            val kotlinExtensionsName = ClassName.get("rxhttp.wrapper.utils", "UriUtil")
             val mapEntryName = ClassName.get("java.util.Map", "Entry")
 
             methodList.add(
@@ -657,9 +656,21 @@ class RxHttpGenerator {
                 MethodSpec.methodBuilder("addPart")
                     .addModifiers(Modifier.PUBLIC)
                     .addParameter(contextName, "context")
-                    .addParameter(String::class.java, "name")
+                    .addParameter(String::class.java, "key")
                     .addParameter(uriName, "uri")
-                    .addStatement("param.addPart(\$T.asPart(uri, context, name))", kotlinExtensionsName)
+                    .addStatement("param.addPart(\$T.asPart(uri, context, key))", kotlinExtensionsName)
+                    .addStatement("return this")
+                    .returns(rxHttpFormName)
+                    .build())
+
+            methodList.add(
+                MethodSpec.methodBuilder("addPart")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(contextName, "context")
+                    .addParameter(String::class.java, "key")
+                    .addParameter(String::class.java, "fileName")
+                    .addParameter(uriName, "uri")
+                    .addStatement("param.addPart(\$T.asPart(uri, context, key, fileName))", kotlinExtensionsName)
                     .addStatement("return this")
                     .returns(rxHttpFormName)
                     .build())
@@ -679,10 +690,23 @@ class RxHttpGenerator {
                 MethodSpec.methodBuilder("addPart")
                     .addModifiers(Modifier.PUBLIC)
                     .addParameter(contextName, "context")
-                    .addParameter(String::class.java, "name")
+                    .addParameter(String::class.java, "key")
                     .addParameter(uriName, "uri")
                     .addParameter(mediaTypeParam)
-                    .addStatement("param.addPart(\$T.asPart(uri, context, name, contentType))", kotlinExtensionsName)
+                    .addStatement("param.addPart(\$T.asPart(uri, context, key, null, contentType))", kotlinExtensionsName)
+                    .addStatement("return this")
+                    .returns(rxHttpFormName)
+                    .build())
+
+            methodList.add(
+                MethodSpec.methodBuilder("addPart")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(contextName, "context")
+                    .addParameter(String::class.java, "key")
+                    .addParameter(String::class.java, "filename")
+                    .addParameter(uriName, "uri")
+                    .addParameter(mediaTypeParam)
+                    .addStatement("param.addPart(\$T.asPart(uri, context, key, filename, contentType))", kotlinExtensionsName)
                     .addStatement("return this")
                     .returns(rxHttpFormName)
                     .build())
@@ -693,7 +717,7 @@ class RxHttpGenerator {
                     .addParameter(contextName, "context")
                     .addParameter(mapUriName, "uriMap")
                     .addCode("""
-                        for (${"$"}T<String, ? extends Uri> entry : uriMap.entrySet()) {
+                        for (${"$"}T<String, Uri> entry : uriMap.entrySet()) {
                             addPart(context, entry.getKey(), entry.getValue());       
                         }
                         return this;
@@ -719,11 +743,11 @@ class RxHttpGenerator {
                 MethodSpec.methodBuilder("addParts")
                     .addModifiers(Modifier.PUBLIC)
                     .addParameter(contextName, "context")
-                    .addParameter(String::class.java, "name")
+                    .addParameter(String::class.java, "key")
                     .addParameter(listUriName, "uris")
                     .addCode("""
                         for (Uri uri : uris) {          
-                            addPart(context, name, uri);
+                            addPart(context, key, uri);
                         }
                         return this;                               
                     """.trimIndent())
@@ -749,12 +773,12 @@ class RxHttpGenerator {
                 MethodSpec.methodBuilder("addParts")
                     .addModifiers(Modifier.PUBLIC)
                     .addParameter(contextName, "context")
-                    .addParameter(String::class.java, "name")
+                    .addParameter(String::class.java, "key")
                     .addParameter(listUriName, "uris")
                     .addParameter(mediaTypeParam)
                     .addCode("""
                         for (Uri uri : uris) {                       
-                            addPart(context, name, uri, contentType);
+                            addPart(context, key, uri, contentType);
                         }
                         return this;                                            
                     """.trimIndent())
@@ -793,10 +817,10 @@ class RxHttpGenerator {
         methodList.add(
             MethodSpec.methodBuilder("addFormDataPart")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(stringName, "name")
+                .addParameter(stringName, "key")
                 .addParameter(stringName, "fileName")
                 .addParameter(requestBodyName, "requestBody")
-                .addStatement("param.addFormDataPart(name, fileName, requestBody)")
+                .addStatement("param.addFormDataPart(key, fileName, requestBody)")
                 .addStatement("return this")
                 .returns(rxHttpFormName)
                 .build())

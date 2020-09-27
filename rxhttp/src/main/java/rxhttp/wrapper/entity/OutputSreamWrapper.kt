@@ -1,5 +1,7 @@
 package rxhttp.wrapper.entity
 
+import android.content.Context
+import android.net.Uri
 import java.io.OutputStream
 
 /**
@@ -14,3 +16,13 @@ data class OutputStreamWrapper<out T>(
 }
 
 fun <T> OutputStream.toWrapper(that: T): OutputStreamWrapper<T> = OutputStreamWrapper(that, this)
+
+fun Uri.toWrapper(os: OutputStream): OutputStreamWrapper<Uri> = OutputStreamWrapper(this, os)
+
+fun Uri.toWrapper(
+    context: Context,
+    append: Boolean = false
+): OutputStreamWrapper<Uri> {
+    val os = context.contentResolver.openOutputStream(this, if (append) "wa" else "w")
+    return OutputStreamWrapper(this, os)
+}

@@ -15,7 +15,7 @@ import okhttp3.MultipartBody.Part;
 import okhttp3.RequestBody;
 import rxhttp.wrapper.annotations.Nullable;
 import rxhttp.wrapper.entity.UpFile;
-import rxhttp.wrapper.utils.KotlinExtensions;
+import rxhttp.wrapper.utils.UriUtil;
 
 /**
  * Github
@@ -67,7 +67,7 @@ public class RxHttpFormParam extends RxHttpBodyParam<FormParam, RxHttpFormParam>
    */
   @Deprecated
   public RxHttpFormParam add(String key, File file) {
-    param.add(key,file);
+    param.addFile(key,file);
     return this;
   }
 
@@ -81,13 +81,13 @@ public class RxHttpFormParam extends RxHttpBodyParam<FormParam, RxHttpFormParam>
     return this;
   }
 
-  public RxHttpFormParam addFile(String key, String value, String filePath) {
-    param.addFile(key,value,filePath);
+  public RxHttpFormParam addFile(String key, String filename, String filePath) {
+    param.addFile(key, filename, filePath);
     return this;
   }
 
-  public RxHttpFormParam addFile(String key, String value, File file) {
-    param.addFile(key,value,file);
+  public RxHttpFormParam addFile(String key, String filename, File file) {
+    param.addFile(key, filename, file);
     return this;
   }
 
@@ -118,48 +118,59 @@ public class RxHttpFormParam extends RxHttpBodyParam<FormParam, RxHttpFormParam>
   }
 
   public RxHttpFormParam addPart(Context context, Uri uri) {
-    param.addPart(KotlinExtensions.asRequestBody(uri, context));
+    param.addPart(UriUtil.asRequestBody(uri, context));
     return this;
   }
 
-  public RxHttpFormParam addPart(Context context, String name, Uri uri) {
-    param.addPart(KotlinExtensions.asPart(uri, context, name));
+  public RxHttpFormParam addPart(Context context, String key, Uri uri) {
+    param.addPart(UriUtil.asPart(uri, context, key));
+    return this;
+  }
+
+  public RxHttpFormParam addPart(Context context, String key, String fileName, Uri uri) {
+    param.addPart(UriUtil.asPart(uri, context, key, fileName));
     return this;
   }
 
   public RxHttpFormParam addPart(Context context, Uri uri, @Nullable MediaType contentType) {
-    param.addPart(KotlinExtensions.asRequestBody(uri, context, contentType));
+    param.addPart(UriUtil.asRequestBody(uri, context, contentType));
     return this;
   }
 
-  public RxHttpFormParam addPart(Context context, String name, Uri uri,
+  public RxHttpFormParam addPart(Context context, String key, Uri uri,
       @Nullable MediaType contentType) {
-    param.addPart(KotlinExtensions.asPart(uri, context, name, contentType));
+    param.addPart(UriUtil.asPart(uri, context, key, null, contentType));
     return this;
   }
 
-  public RxHttpFormParam addParts(Context context, Map<String, ? extends Uri> uriMap) {
-    for (Entry<String, ? extends Uri> entry : uriMap.entrySet()) {
+  public RxHttpFormParam addPart(Context context, String key, String filename, Uri uri,
+      @Nullable MediaType contentType) {
+    param.addPart(UriUtil.asPart(uri, context, key, filename, contentType));
+    return this;
+  }
+
+  public RxHttpFormParam addParts(Context context, Map<String, Uri> uriMap) {
+    for (Entry<String, Uri> entry : uriMap.entrySet()) {
         addPart(context, entry.getKey(), entry.getValue());       
     }
     return this;
   }
 
-  public RxHttpFormParam addParts(Context context, List<? extends Uri> uris) {
+  public RxHttpFormParam addParts(Context context, List<Uri> uris) {
     for (Uri uri : uris) {    
         addPart(context, uri);
     }
     return this;                         
   }
 
-  public RxHttpFormParam addParts(Context context, String name, List<? extends Uri> uris) {
+  public RxHttpFormParam addParts(Context context, String key, List<Uri> uris) {
     for (Uri uri : uris) {          
-        addPart(context, name, uri);
+        addPart(context, key, uri);
     }
     return this;                               
   }
 
-  public RxHttpFormParam addParts(Context context, List<? extends Uri> uris,
+  public RxHttpFormParam addParts(Context context, List<Uri> uris,
       @Nullable MediaType contentType) {
     for (Uri uri : uris) {                 
         addPart(context, uri, contentType);
@@ -167,10 +178,10 @@ public class RxHttpFormParam extends RxHttpBodyParam<FormParam, RxHttpFormParam>
     return this;                                      
   }
 
-  public RxHttpFormParam addParts(Context context, String name, List<? extends Uri> uris,
+  public RxHttpFormParam addParts(Context context, String key, List<Uri> uris,
       @Nullable MediaType contentType) {
     for (Uri uri : uris) {                       
-        addPart(context, name, uri, contentType);
+        addPart(context, key, uri, contentType);
     }
     return this;                                            
   }
@@ -190,8 +201,8 @@ public class RxHttpFormParam extends RxHttpBodyParam<FormParam, RxHttpFormParam>
     return this;
   }
 
-  public RxHttpFormParam addFormDataPart(String name, String fileName, RequestBody requestBody) {
-    param.addFormDataPart(name, fileName, requestBody);
+  public RxHttpFormParam addFormDataPart(String key, String fileName, RequestBody requestBody) {
+    param.addFormDataPart(key, fileName, requestBody);
     return this;
   }
 

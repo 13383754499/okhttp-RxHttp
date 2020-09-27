@@ -5,10 +5,9 @@ import android.net.Uri
 import okhttp3.Response
 import okhttp3.ResponseBody
 import rxhttp.wrapper.OkHttpCompat
-import rxhttp.wrapper.callback.FileOutputStreamFactory
 import rxhttp.wrapper.callback.OutputStreamFactory
 import rxhttp.wrapper.callback.ProgressCallback
-import rxhttp.wrapper.callback.UriOutputStreamFactory
+import rxhttp.wrapper.callback.newOutputStreamFactory
 import rxhttp.wrapper.entity.Progress
 import rxhttp.wrapper.exception.ExceptionHelper
 import rxhttp.wrapper.utils.IOUtil
@@ -31,13 +30,13 @@ class StreamParser<T> @JvmOverloads constructor(
         @JvmStatic
         operator fun get(
             destPath: String,
-        ): StreamParser<String> = StreamParser(FileOutputStreamFactory(destPath))
+        ): StreamParser<String> = StreamParser(newOutputStreamFactory(destPath))
 
         @JvmStatic
         operator fun get(
             context: Context,
             uri: Uri,
-        ): StreamParser<Uri> = StreamParser(UriOutputStreamFactory(context, uri))
+        ): StreamParser<Uri> = StreamParser(newOutputStreamFactory(context, uri))
     }
 
     override fun onParse(response: Response): T {
@@ -66,7 +65,7 @@ private fun Response.writeTo(
     IOUtil.write(body.byteStream(), os) {
         val currentSize = it + offsetSize
         //当前进度 = 当前已读取的字节 / 总字节
-        val currentProgress = ((currentSize * 100f / contentLength)).toInt()
+        val currentProgress = ((currentSize * 100 / contentLength)).toInt()
         if (currentProgress > lastProgress) {
             lastProgress = currentProgress
             val progress = Progress(currentProgress, currentSize, contentLength)
