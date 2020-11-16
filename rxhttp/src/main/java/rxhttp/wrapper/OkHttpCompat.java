@@ -1,6 +1,7 @@
 package rxhttp.wrapper;
 
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -13,7 +14,11 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okhttp3.internal.Util;
+import okhttp3.internal.cache.DiskLruCache;
+import okhttp3.internal.cache.DiskLruCache.Companion;
+import okhttp3.internal.concurrent.TaskRunner;
 import okhttp3.internal.http.StatusLine;
+import okhttp3.internal.io.FileSystem;
 import rxhttp.wrapper.annotations.Nullable;
 import rxhttp.wrapper.callback.IConverter;
 import rxhttp.wrapper.entity.DownloadOffSize;
@@ -123,32 +128,54 @@ public class OkHttpCompat {
         }
     }
 
+    public static DiskLruCache newDiskLruCache(FileSystem fileSystem, File directory, int appVersion, int valueCount, long maxSize) {
+        String okHttpVersion = getOkHttpUserAgent();
+        if (okHttpVersion.compareTo("okhttp/4.3.0") >= 0) {
+            return new DiskLruCache(fileSystem, directory, appVersion, valueCount, maxSize, TaskRunner.INSTANCE);
+        } else if (okHttpVersion.compareTo("okhttp/4.0.0") >= 0) {
+            Companion companion = DiskLruCache.Companion;
+            Class<? extends Companion> clazz = companion.getClass();
+            try {
+                Method create = clazz.getDeclaredMethod("create", FileSystem.class, File.class, int.class, int.class, long.class);
+                return (DiskLruCache) create.invoke(companion, fileSystem, directory, appVersion, valueCount, maxSize);
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        } else {
+            Class<DiskLruCache> clazz = DiskLruCache.class;
+            try {
+                Method create = clazz.getDeclaredMethod("create", FileSystem.class, File.class, int.class, int.class, long.class);
+                return (DiskLruCache) create.invoke(null, fileSystem, directory, appVersion, valueCount, maxSize);
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        }
+        throw new RuntimeException("Please upgrade OkHttp to V3.12.0 or higher");
+    }
+
+    //获取OkHttp版本号
     public static String getOkHttpUserAgent() {
         if (OKHTTP_USER_AGENT != null) return OKHTTP_USER_AGENT;
         try {
             //4.7.x及以上版本获取userAgent方式
-            Class<?> utilClass = Class.forName("okhttp3.internal.Util");
-            return OKHTTP_USER_AGENT = (String) utilClass.getDeclaredField("userAgent").get(utilClass);
+            Class<?> clazz = Class.forName("okhttp3.internal.Util");
+            return OKHTTP_USER_AGENT = (String) clazz.getDeclaredField("userAgent").get(null);
         } catch (Throwable ignore) {
         }
         try {
-            Class<?> versionClass = Class.forName("okhttp3.internal.Version");
+            Class<?> clazz = Class.forName("okhttp3.internal.Version");
             try {
                 //4.x.x及以上版本获取userAgent方式
-                Field userAgent = versionClass.getDeclaredField("userAgent");
-                return OKHTTP_USER_AGENT = (String) userAgent.get(versionClass);
-            } catch (Exception ignore) {
-
-            }
-            try {
-                //4.x.x以下版本获取userAgent方式
-                Method userAgent = versionClass.getDeclaredMethod("userAgent");
-                return OKHTTP_USER_AGENT = (String) userAgent.invoke(versionClass);
+                Field userAgent = clazz.getDeclaredField("userAgent");
+                return OKHTTP_USER_AGENT = (String) userAgent.get(null);
             } catch (Exception ignore) {
             }
+            //4.x.x以下版本获取userAgent方式
+            Method userAgent = clazz.getDeclaredMethod("userAgent");
+            return OKHTTP_USER_AGENT = (String) userAgent.invoke(null);
         } catch (Throwable e) {
             e.printStackTrace();
         }
-        return OKHTTP_USER_AGENT = "okhttp/x.x.x";
+        return OKHTTP_USER_AGENT = "okhttp/4.2.0";
     }
 }

@@ -3,6 +3,8 @@ package rxhttp;
 import android.os.Build;
 import android.util.Log;
 
+import rxhttp.wrapper.utils.LogUtil;
+
 /**
  * User: ljx
  * Date: 2019-12-29
@@ -71,22 +73,36 @@ public class Platform {
 
         @Override
         public void logi(String tag, String message) {
-            Log.i(tag, message);
+            log(Log.INFO, tag, message);
         }
 
         @Override
         public void logd(String tag, String message) {
-            Log.d(tag, message);
+            log(Log.DEBUG, tag, message);
         }
 
         @Override
         public void loge(String tag, String message) {
-            Log.e(tag, message);
+            log(Log.ERROR, tag, message);
         }
 
         @Override
         public void logd(String tag, String message, Throwable e) {
-            Log.e(tag, message, e);
+            log(Log.DEBUG, tag, message + '\n' + Log.getStackTraceString(e));
+        }
+
+        public static void log(int priority, String tag, String content) {
+            int p = 3072;
+            int i = 0;
+            while (content.length() > p) {
+                String logContent = content.substring(0, p);
+                Log.println(priority, tag, logContent);
+                if (!LogUtil.isSegmentPrint()) return;
+                Log.i(tag, "<---------------------------------- Segment " + (++i) + " ---------------------------------->");
+                content = content.substring(p);
+            }
+            if (content.length() > 0)
+                Log.println(priority, tag, content);
         }
     }
 }

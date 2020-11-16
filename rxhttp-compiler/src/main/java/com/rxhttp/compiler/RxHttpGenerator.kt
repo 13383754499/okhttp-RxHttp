@@ -48,8 +48,9 @@ class RxHttpGenerator {
 
 
     @Throws(IOException::class)
-    fun generateCode(filer: Filer, okHttpVersion: String, isAndroidPlatform: Boolean) {
+    fun generateCode(filer: Filer, isAndroidPlatform: Boolean) {
         val httpSenderName = ClassName.get("rxhttp", "HttpSender")
+        val logUtilName = ClassName.get("rxhttp.wrapper.utils", "LogUtil")
         val rxHttpPluginsName = ClassName.get("rxhttp", "RxHttpPlugins")
         val converterName = ClassName.get("rxhttp.wrapper.callback", "IConverter")
         val functionsName = ClassName.get("rxhttp.wrapper.callback", "Function")
@@ -105,7 +106,16 @@ class RxHttpGenerator {
             MethodSpec.methodBuilder("setDebug")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                 .addParameter(Boolean::class.javaPrimitiveType, "debug")
-                .addStatement("\$T.setDebug(debug)", httpSenderName)
+                .addStatement("setDebug(debug, false)")
+                .returns(Void.TYPE)
+                .build())
+
+        methodList.add(
+            MethodSpec.methodBuilder("setDebug")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter(Boolean::class.javaPrimitiveType, "debug")
+                .addParameter(Boolean::class.javaPrimitiveType, "segmentPrint")
+                .addStatement("\$T.setDebug(debug, segmentPrint)", logUtilName)
                 .returns(Void.TYPE)
                 .build())
 
@@ -299,38 +309,6 @@ class RxHttpGenerator {
             .addMember("value", "\"unchecked\"")
             .build()
         val baseRxHttpName = ClassName.get(rxHttpPackage, "BaseRxHttp")
-        val diskLruCacheFactoryName = ClassName.get("rxhttp.wrapper.cahce", "DiskLruCacheFactory")
-        val diskLruCacheName = ClassName.get("okhttp3.internal.cache", "DiskLruCache")
-        val taskRunnerName = ClassName.get("okhttp3.internal.concurrent", "TaskRunner")
-        val staticCodeBlock = when {
-            okHttpVersion < "4.0.0" -> {
-                CodeBlock.of(
-                    """
-                    ${"$"}T.factory = (fileSystem, directory, appVersion, valueCount, maxSize) -> {               
-                        return ${"$"}T.create(fileSystem, directory, appVersion, valueCount, maxSize); 
-                    };
-    
-                """.trimIndent(), diskLruCacheFactoryName, diskLruCacheName)
-            }
-            okHttpVersion < "4.3.0" -> {
-                CodeBlock.of(
-                    """
-                    ${"$"}T.factory = (fileSystem, directory, appVersion, valueCount, maxSize) -> {               
-                        return ${"$"}T.Companion.create(fileSystem, directory, appVersion, valueCount, maxSize); 
-                    };
-    
-                """.trimIndent(), diskLruCacheFactoryName, diskLruCacheName)
-            }
-            else -> {
-                CodeBlock.of(
-                    """
-                    ${"$"}T.factory = (fileSystem, directory, appVersion, valueCount, maxSize) -> {               
-                        return new ${"$"}T(fileSystem, directory, appVersion, valueCount, maxSize, ${"$"}T.INSTANCE); 
-                    };
-    
-                """.trimIndent(), diskLruCacheFactoryName, diskLruCacheName, taskRunnerName)
-            }
-        }
 
         val isAsyncField = FieldSpec
             .builder(Boolean::class.javaPrimitiveType, "isAsync", Modifier.PROTECTED)
@@ -347,7 +325,6 @@ class RxHttpGenerator {
             """.trimIndent())
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(build)
-            .addStaticBlock(staticCodeBlock)
             .addField(p, "param", Modifier.PROTECTED)
             .addField(Int::class.javaPrimitiveType, "connectTimeoutMillis", Modifier.PRIVATE)
             .addField(Int::class.javaPrimitiveType, "readTimeoutMillis", Modifier.PRIVATE)

@@ -4,6 +4,7 @@ import com.example.httpsender.RxHttpManager;
 import com.example.httpsender.entity.PageList;
 import com.example.httpsender.entity.Url;
 import com.example.httpsender.param.GetEncryptParam;
+import com.example.httpsender.param.PostBodyParam;
 import com.example.httpsender.param.PostEncryptFormParam;
 import com.example.httpsender.param.PostEncryptJsonParam;
 import com.example.httpsender.param.PostEncryptJsonParam1;
@@ -30,14 +31,11 @@ import okhttp3.Headers.Builder;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import okhttp3.internal.cache.DiskLruCache;
-import okhttp3.internal.concurrent.TaskRunner;
 import org.jetbrains.annotations.NotNull;
 import rxhttp.HttpSender;
 import rxhttp.RxHttpPlugins;
 import rxhttp.wrapper.cahce.CacheMode;
 import rxhttp.wrapper.cahce.CacheStrategy;
-import rxhttp.wrapper.cahce.DiskLruCacheFactory;
 import rxhttp.wrapper.callback.Function;
 import rxhttp.wrapper.callback.IConverter;
 import rxhttp.wrapper.entity.DownloadOffSize;
@@ -58,12 +56,6 @@ import rxhttp.wrapper.utils.LogUtil;
  */
 @SuppressWarnings("unchecked")
 public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
-  static {
-    DiskLruCacheFactory.factory = (fileSystem, directory, appVersion, valueCount, maxSize) -> {               
-        return new DiskLruCache(fileSystem, directory, appVersion, valueCount, maxSize, TaskRunner.INSTANCE); 
-    };
-  }
-
   protected P param;
 
   private int connectTimeoutMillis;
@@ -87,7 +79,11 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
   }
 
   public static void setDebug(boolean debug) {
-    HttpSender.setDebug(debug);
+    setDebug(debug, false);
+  }
+
+  public static void setDebug(boolean debug, boolean segmentPrint) {
+    LogUtil.setDebug(debug, segmentPrint);
   }
 
   public static void init(OkHttpClient okHttpClient) {
@@ -272,6 +268,10 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
 
   public static RxHttpGetEncryptParam getEncrypt(String url, Object... formatArgs) {
     return new RxHttpGetEncryptParam(new GetEncryptParam(format(url, formatArgs)));
+  }
+
+  public static RxHttpPostBodyParam postBodyForm(String url, Object... formatArgs) {
+    return new RxHttpPostBodyParam(new PostBodyParam(format(url, formatArgs)));
   }
 
   public static RxHttpPostEncryptJsonParam1 postEncryptJson1(String url, Object... formatArgs) {

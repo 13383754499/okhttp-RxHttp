@@ -49,21 +49,38 @@ wiki详细文档：https://github.com/liujingxing/okhttp-RxHttp/wiki  (此文档
 
 ***[Maven依赖点击这里](https://github.com/liujingxing/okhttp-RxHttp/blob/master/maven_dependency.md)***
 
-***1、`OkHttp 3.14.x`以上版本, 最低要求为API 21，如你想要兼容21以下，请依赖`OkHttp 3.12.x`，该版本最低要求 API 9***
+***1、RxHttp目前已适配`OkHttp 3.12.0 - 4.9.0`版本(4.3.0版本除外), 如你想要兼容21以下，请依赖`OkHttp 3.12.x`，该版本最低要求 API 9***
 
 ***2、asXxx方法内部是通过RxJava实现的，而RxHttp 2.2.0版本起，内部已剔除RxJava，如需使用，请自行依赖RxJava并告知RxHttp依赖的Rxjava版本***
 
+
+## 必须
 ```java
-//使用kapt依赖rxhttp-compiler，需要导入kapt插件
+//使用kapt依赖rxhttp-compiler时必须
 apply plugin: 'kotlin-kapt'
 
+android {
+    //必须，java 8或更高
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation 'com.ljx.rxhttp:rxhttp:2.4.3'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.0' //rxhttp v2.2.2版本起，需要手动依赖okhttp
+    kapt 'com.ljx.rxhttp:rxhttp-compiler:2.4.3' //生成RxHttp类，纯Java项目，请使用annotationProcessor代替kapt
+ }
+```
+
+## 可选
+```java
 android {
     defaultConfig {
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments = [
-                    //必须，告知RxHttp你依赖的okhttp版本，目前已适配 v3.12.0 - v4.9.0版本  (v4.3.0除外)
-                    rxhttp_okhttp: '4.9.0'，
                     //使用asXxx方法时必须，告知RxHttp你依赖的rxjava版本，可传入rxjava2、rxjava3
                     rxhttp_rxjava: 'rxjava3'， 
                     rxhttp_package: 'rxhttp'   //非必须，指定RxHttp类包名
@@ -71,18 +88,8 @@ android {
             }
         }
     }
-    //必须，java 8或更高
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
 }
 dependencies {
-    //以下3个为必须，
-    implementation 'com.ljx.rxhttp:rxhttp:2.4.1'
-    implementation 'com.squareup.okhttp3:okhttp:4.9.0' //rxhttp v2.2.2版本起，需要手动依赖okhttp
-    kapt 'com.ljx.rxhttp:rxhttp-compiler:2.4.1' //生成RxHttp类，纯Java项目，请使用annotationProcessor代替kapt
-    
     implementation 'com.ljx.rxlife:rxlife-coroutine:2.0.1' //管理协程生命周期，页面销毁，关闭请求
     
     //rxjava2   (RxJava2/Rxjava3二选一，使用asXxx方法时必须)
@@ -96,11 +103,11 @@ dependencies {
     implementation 'com.ljx.rxlife3:rxlife-rxjava:3.0.0' //管理RxJava3生命周期，页面销毁，关闭请求
 
     //非必须，根据自己需求选择 RxHttp默认内置了GsonConverter
-    implementation 'com.ljx.rxhttp:converter-fastjson:2.4.1'
-    implementation 'com.ljx.rxhttp:converter-jackson:2.4.1'
-    implementation 'com.ljx.rxhttp:converter-moshi:2.4.1'
-    implementation 'com.ljx.rxhttp:converter-protobuf:2.4.1'
-    implementation 'com.ljx.rxhttp:converter-simplexml:2.4.1'
+    implementation 'com.ljx.rxhttp:converter-fastjson:2.4.3'
+    implementation 'com.ljx.rxhttp:converter-jackson:2.4.3'
+    implementation 'com.ljx.rxhttp:converter-moshi:2.4.3'
+    implementation 'com.ljx.rxhttp:converter-protobuf:2.4.3'
+    implementation 'com.ljx.rxhttp:converter-simplexml:2.4.3'
 }
 ```
 
@@ -109,26 +116,8 @@ dependencies {
 
 # 混淆
 
-`RxHttp v2.2.8`版本起，无需添加混淆规则(内部自带混淆规则)，v2.2.8以下版本，在proguard-rules.pro文件添加以下代码
+`RxHttp v2.2.8`版本起，无需添加任何混淆规则(内部自带混淆规则)，v2.2.8以下版本，请[查看混淆规则](https://github.com/liujingxing/okhttp-RxHttp/wiki/关于混淆),并添加到自己项目中
 
-```bash
-# okhttp 4.7.0及以上版本混淆规则
--keepclassmembers class okhttp3.internal.Util {
-    public static java.lang.String userAgent;
-}
-
-# okhttp 4.7.0以下版本混淆规则
--keepclassmembers class okhttp3.internal.Version {
-    # 4.0.0<=version<4.7.0
-    public static java.lang.String userAgent;
-    # version<4.0.0
-    public static java.lang.String userAgent();
-}
-# okhttp 4.0.0以下版本混淆规则
--keepclassmembers class okhttp3.internal.http.StatusLine {
-    public static okhttp3.internal.http.StatusLine parse(java.lang.String);
-}
-```
 
 # 小技巧
 
