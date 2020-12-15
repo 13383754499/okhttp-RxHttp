@@ -13,7 +13,26 @@ import javax.annotation.processing.Filer
 object ClassHelper {
 
     @JvmStatic
-    fun generatorBaseRxHttp(filer: Filer, isAndroid: Boolean) {
+    fun generatorStaticClass(filer: Filer, isAndroid: Boolean) {
+        generatorBaseRxHttp(filer, isAndroid)
+        generatorRxHttpAbstractBodyParam(filer)
+        generatorRxHttpFormParam(filer, isAndroid)
+        generatorRxHttpNoBodyParam(filer)
+        generatorRxHttpJsonParam(filer)
+        generatorRxHttpJsonArrayParam(filer)
+        if (isDependenceRxJava()) {
+            generatorObservableClass(filer)
+        }
+    }
+
+    private fun generatorObservableClass(filer: Filer) {
+        generatorObservableCall(filer)
+        generatorObservableCallEnqueue(filer)
+        generatorObservableCallExecute(filer)
+        generatorObservableParser(filer)
+    }
+
+    private fun generatorBaseRxHttp(filer: Filer, isAndroid: Boolean) {
         if (!isDependenceRxJava()) {
             generatorClass(filer, "BaseRxHttp", """
                 package $rxHttpPackage;
@@ -142,13 +161,13 @@ object ClassHelper {
                     Type tTypeList = ParameterizedTypeImpl.get(List.class, tType);
                     return asParser(new SimpleParser<List<T>>(tTypeList));
                 }
-
                 ${
-                if (isAndroid) """public final <T> Observable<Bitmap> asBitmap() {
+                if (isAndroid) """
+                public final <T> Observable<Bitmap> asBitmap() {
                     return asParser(new BitmapParser());
-                }""" else ""
                 }
-
+                """ else ""
+                }
                 public final Observable<Response> asOkResponse() {
                     return asParser(new OkResponseParser());
                 }
@@ -261,8 +280,7 @@ object ClassHelper {
         }
     }
 
-    @JvmStatic
-    fun generatorObservableCallEnqueue(filer: Filer) {
+    private fun generatorObservableCallEnqueue(filer: Filer) {
         generatorClass(filer, "ObservableCallEnqueue", """
             package $rxHttpPackage;
  
@@ -286,16 +304,16 @@ object ClassHelper {
              * Date: 2018/04/20
              * Time: 11:15
              */
-            public final class ObservableCallEnqueue extends ObservableCall {
+            final class ObservableCallEnqueue extends ObservableCall {
 
                 private IRxHttp iRxHttp;
                 private boolean callbackUploadProgress;
 
-                public ObservableCallEnqueue(IRxHttp iRxHttp) {
+                ObservableCallEnqueue(IRxHttp iRxHttp) {
                     this(iRxHttp, false);
                 }
 
-                public ObservableCallEnqueue(IRxHttp iRxHttp, boolean callbackUploadProgress) {
+                ObservableCallEnqueue(IRxHttp iRxHttp, boolean callbackUploadProgress) {
                     this.iRxHttp = iRxHttp;
                     this.callbackUploadProgress = callbackUploadProgress;
                 }
@@ -324,8 +342,8 @@ object ClassHelper {
                      * @param downstream the Observer to wrap, not null (not verified)
                      */
                     HttpDisposable(Observer<? super Progress> downstream, IRxHttp iRxHttp, boolean callbackUploadProgress) {
-                        if (iRxHttp instanceof RxHttpBodyParam && callbackUploadProgress) {
-                            RxHttpBodyParam<?, ?> bodyParam = (RxHttpBodyParam) iRxHttp;
+                        if (iRxHttp instanceof RxHttpAbstractBodyParam && callbackUploadProgress) {
+                            RxHttpAbstractBodyParam<?, ?> bodyParam = (RxHttpAbstractBodyParam) iRxHttp;
                             bodyParam.getParam().setProgressCallback(this);
                         }
                         this.downstream = downstream;
@@ -380,8 +398,7 @@ object ClassHelper {
         """.trimIndent())
     }
 
-    @JvmStatic
-    fun generatorObservableCallExecute(filer: Filer) {
+    private fun generatorObservableCallExecute(filer: Filer) {
         generatorClass(filer, "ObservableCallExecute", """
             package $rxHttpPackage;
 
@@ -402,16 +419,16 @@ object ClassHelper {
              * Date: 2018/04/20
              * Time: 11:15
              */
-            public final class ObservableCallExecute extends ObservableCall {
+            final class ObservableCallExecute extends ObservableCall {
 
                 private IRxHttp iRxHttp;
                 private boolean callbackUploadProgress;
 
-                public ObservableCallExecute(IRxHttp iRxHttp) {
+                ObservableCallExecute(IRxHttp iRxHttp) {
                     this(iRxHttp, false);
                 }
 
-                public ObservableCallExecute(IRxHttp iRxHttp, boolean callbackUploadProgress) {
+                ObservableCallExecute(IRxHttp iRxHttp, boolean callbackUploadProgress) {
                     this.iRxHttp = iRxHttp;
                     this.callbackUploadProgress = callbackUploadProgress;
                 }
@@ -440,8 +457,8 @@ object ClassHelper {
                      * @param downstream the Observer to wrap, not null (not verified)
                      */
                     HttpDisposable(Observer<? super Progress> downstream, IRxHttp iRxHttp, boolean callbackUploadProgress) {
-                        if (iRxHttp instanceof RxHttpBodyParam && callbackUploadProgress) {
-                            RxHttpBodyParam<?, ?> bodyParam = (RxHttpBodyParam) iRxHttp;
+                        if (iRxHttp instanceof RxHttpAbstractBodyParam && callbackUploadProgress) {
+                            RxHttpAbstractBodyParam<?, ?> bodyParam = (RxHttpAbstractBodyParam) iRxHttp;
                             bodyParam.getParam().setProgressCallback(this);
                         }
                         this.downstream = downstream;
@@ -493,8 +510,7 @@ object ClassHelper {
         """.trimIndent())
     }
 
-    @JvmStatic
-    fun generatorObservableCall(filer: Filer) {
+    private fun generatorObservableCall(filer: Filer) {
         generatorClass(filer, "ObservableCall", """
             package $rxHttpPackage;
 
@@ -509,7 +525,7 @@ object ClassHelper {
              * Date: 2020/9/5
              * Time: 21:59
              */
-            public abstract class ObservableCall extends Observable<Progress> {
+            abstract class ObservableCall extends Observable<Progress> {
             
                 public <T> Observable<T> asParser(Parser<T> parser) {
                     return asParser(parser, null, null);
@@ -527,9 +543,7 @@ object ClassHelper {
         """.trimIndent())
     }
 
-
-    @JvmStatic
-    fun generatorObservableParser(filer: Filer) {
+    private fun generatorObservableParser(filer: Filer) {
         generatorClass(filer, "ObservableParser", """
             package $rxHttpPackage;
 
@@ -540,16 +554,14 @@ object ClassHelper {
             import ${getClassPath("ObservableSource")};
             import ${getClassPath("Observer")};
             import ${getClassPath("Exceptions")};
+            import ${getClassPath("SimplePlainQueue")};
+            import ${getClassPath("SpscArrayQueue")};
             import ${getClassPath("RxJavaPlugins")};
             import ${getClassPath("Scheduler")};
             import ${getClassPath("Disposable")};
             import ${getClassPath("Consumer")};
-            import ${getClassPath("CompositeException")};
             import ${getClassPath("DisposableHelper")};
-            
             import ${getClassPath("Scheduler")}.Worker;
-            import ${getClassPath("SimpleQueue")};
-            import ${getClassPath("SpscLinkedArrayQueue")};
             
             import okhttp3.Response;
             import rxhttp.wrapper.annotations.NonNull;
@@ -561,14 +573,14 @@ object ClassHelper {
             import rxhttp.wrapper.parse.Parser;
             import rxhttp.wrapper.utils.LogUtil;
 
-            public final class ObservableParser<T> extends Observable<T> {
+            final class ObservableParser<T> extends Observable<T> {
 
                 private final Parser<T> parser;
                 private final ObservableSource<Progress> source;
                 private final Scheduler scheduler;
                 private final Consumer<Progress> progressConsumer;
 
-                public ObservableParser(@NonNull ObservableSource<Progress> source, @NonNull Parser<T> parser,
+                ObservableParser(@NonNull ObservableSource<Progress> source, @NonNull Parser<T> parser,
                                         @Nullable Scheduler scheduler, @Nullable Consumer<Progress> progressConsumer) {
                     this.source = source;
                     this.parser = parser;
@@ -699,7 +711,7 @@ object ClassHelper {
 
                     private volatile boolean done;
                     private volatile boolean disposed;
-                    private final SimpleQueue<Progress> queue;
+                    private final SimplePlainQueue<Progress> queue;
                     private final Scheduler.Worker worker;
 
                     private final Consumer<Progress> progressConsumer;
@@ -709,7 +721,7 @@ object ClassHelper {
                         this.parser = parser;
                         this.worker = worker;
                         this.progressConsumer = progressConsumer;
-                        queue = new SpscLinkedArrayQueue<>(128);
+                        queue = new SpscArrayQueue<>(2);
 
                         if (progressConsumer != null && parser instanceof StreamParser) {
                             ((StreamParser) parser).setProgressCallback(this);
@@ -730,8 +742,7 @@ object ClassHelper {
                         if (done) {
                             return;
                         }
-                        queue.offer(p);
-                        schedule();
+                        offer(p);
                     }
 
                     @SuppressWarnings("unchecked")
@@ -740,22 +751,26 @@ object ClassHelper {
                         if (done) {
                             return;
                         }
-                        ProgressT<T> p = null;
+                        ProgressT<T> pt = null;
                         if (progress instanceof ProgressT) {
                             ProgressT<Response> progressT = (ProgressT<Response>) progress;
                             try {
                                 T t = Objects.requireNonNull(parser.onParse(progressT.getResult()), "The onParse function returned a null value.");
-                                p = new ProgressT<>(t);
+                                pt = new ProgressT<>(t);
                             } catch (Throwable t) {
                                 LogUtil.log(progressT.getResult().request().url().toString(), t);
                                 onError(t);
                                 return;
                             }
                         }
-                        if (p != null) {
+                        Progress p = pt != null ? pt : progress;
+                        offer(p);
+                    }
+                    
+                    private void offer(Progress p) {
+                        if (!queue.offer(p)) {
+                            queue.poll();
                             queue.offer(p);
-                        } else {
-                            queue.offer(progress);
                         }
                         schedule();
                     }
@@ -792,7 +807,7 @@ object ClassHelper {
                     public void run() {
                         int missed = 1;
 
-                        final SimpleQueue<Progress> q = queue;
+                        final SimplePlainQueue<Progress> q = queue;
                         final Observer<? super T> a = downstream;
                         while (!checkTerminated(done, q.isEmpty(), a)) {
                             for (; ; ) {
@@ -876,13 +891,12 @@ object ClassHelper {
         """.trimIndent())
     }
 
-    @JvmStatic
-    fun generatorRxHttpBodyParam(filer: Filer) {
+    private fun generatorRxHttpAbstractBodyParam(filer: Filer) {
         if (!isDependenceRxJava()) {
-            generatorClass(filer, "RxHttpBodyParam", """
+            generatorClass(filer, "RxHttpAbstractBodyParam", """
                 package $rxHttpPackage;
                 
-                import rxhttp.wrapper.param.BodyParam;
+                import rxhttp.wrapper.param.AbstractBodyParam;
 
                 /**
                  * Github
@@ -892,9 +906,9 @@ object ClassHelper {
                  * https://github.com/liujingxing/okhttp-RxHttp/wiki/更新日志
                  */
                 @SuppressWarnings("unchecked")
-                public class RxHttpBodyParam<P extends BodyParam<P>, R extends RxHttpBodyParam<P, R>> extends RxHttp<P, R> {
+                public class RxHttpAbstractBodyParam<P extends AbstractBodyParam<P>, R extends RxHttpAbstractBodyParam<P, R>> extends RxHttp<P, R> {
 
-                    protected RxHttpBodyParam(P param) {
+                    protected RxHttpAbstractBodyParam(P param) {
                         super(param);
                     }
 
@@ -905,14 +919,14 @@ object ClassHelper {
                 }
             """.trimIndent())
         } else {
-            generatorClass(filer, "RxHttpBodyParam", """
+            generatorClass(filer, "RxHttpAbstractBodyParam", """
                 package $rxHttpPackage;
                 
                 import ${getClassPath("Observable")};
                 import ${getClassPath("Scheduler")};
                 import ${getClassPath("Consumer")};
                 import rxhttp.wrapper.entity.Progress;
-                import rxhttp.wrapper.param.BodyParam;
+                import rxhttp.wrapper.param.AbstractBodyParam;
                 import rxhttp.wrapper.parse.Parser;
                 
                 /**
@@ -923,64 +937,512 @@ object ClassHelper {
                  * https://github.com/liujingxing/okhttp-RxHttp/wiki/更新日志
                  */
                 @SuppressWarnings("unchecked")
-                public class RxHttpBodyParam<P extends BodyParam<P>, R extends RxHttpBodyParam<P, R>> extends RxHttp<P, R> {
-                
-                  //Controls the downstream callback thread
-                  private Scheduler observeOnScheduler;
-                
-                  //Upload progress callback
-                  private Consumer<Progress> progressConsumer;
-                
-                  protected RxHttpBodyParam(P param) {
-                    super(param);
-                  }
-                
-                  public final R setUploadMaxLength(long maxLength) {
-                    param.setUploadMaxLength(maxLength);
-                    return (R) this;
-                  }
-                
-                  public final R upload(Consumer<Progress> progressConsumer) {
-                    return upload(null, progressConsumer);
-                  }
-                
-                  /**
-                   * @param progressConsumer   Upload progress callback
-                   * @param observeOnScheduler Controls the downstream callback thread
-                   */
-                  public final R upload(Scheduler observeOnScheduler, Consumer<Progress> progressConsumer) {
-                    this.progressConsumer = progressConsumer;
-                    this.observeOnScheduler = observeOnScheduler;
-                    return (R) this;
-                  }
-                  
-                  @Override
-                  public final <T> Observable<T> asParser(Parser<T> parser) {
-                    return asParser(parser, observeOnScheduler, progressConsumer);
-                  }
-                  
-                  @Override
-                  public final <T> Observable<T> asParser(Parser<T> parser, Scheduler scheduler,
-                      Consumer<Progress> progressConsumer) {
-                    if (progressConsumer == null) {                                             
-                      return super.asParser(parser, scheduler, null);                                            
-                    }  
-                    ObservableCall observableCall;                                      
-                    if (isAsync) {                                                      
-                      observableCall = new ObservableCallEnqueue(this, true);                 
-                    } else {                                                            
-                      observableCall = new ObservableCallExecute(this, true);                 
-                    }                                                                   
-                    return observableCall.asParser(parser, scheduler, progressConsumer);
-                  }
+                public class RxHttpAbstractBodyParam<P extends AbstractBodyParam<P>, R extends RxHttpAbstractBodyParam<P, R>> extends RxHttp<P, R> {
+
+                    //Controls the downstream callback thread
+                    private Scheduler observeOnScheduler;
+
+                    //Upload progress callback
+                    private Consumer<Progress> progressConsumer;
+
+                    protected RxHttpAbstractBodyParam(P param) {
+                        super(param);
+                    }
+
+                    public final R setUploadMaxLength(long maxLength) {
+                        param.setUploadMaxLength(maxLength);
+                        return (R) this;
+                    }
+
+                    public final R upload(Consumer<Progress> progressConsumer) {
+                        return upload(null, progressConsumer);
+                    }
+
+                    /**
+                     * @param progressConsumer   Upload progress callback
+                     * @param observeOnScheduler Controls the downstream callback thread
+                     */
+                    public final R upload(Scheduler observeOnScheduler, Consumer<Progress> progressConsumer) {
+                        this.progressConsumer = progressConsumer;
+                        this.observeOnScheduler = observeOnScheduler;
+                        return (R) this;
+                    }
+
+                    @Override
+                    public final <T> Observable<T> asParser(Parser<T> parser) {
+                        return asParser(parser, observeOnScheduler, progressConsumer);
+                    }
+
+                    @Override
+                    public final <T> Observable<T> asParser(Parser<T> parser, Scheduler scheduler,
+                                                            Consumer<Progress> progressConsumer) {
+                        if (progressConsumer == null) {
+                            return super.asParser(parser, scheduler, null);
+                        }
+                        ObservableCall observableCall;
+                        if (isAsync) {
+                            observableCall = new ObservableCallEnqueue(this, true);
+                        } else {
+                            observableCall = new ObservableCallExecute(this, true);
+                        }
+                        return observableCall.asParser(parser, scheduler, progressConsumer);
+                    }
                 }
 
         """.trimIndent())
         }
     }
 
-    @JvmStatic
-    fun generatorObservableHttp(filer: Filer) {
+    private fun generatorRxHttpNoBodyParam(filer: Filer) {
+        generatorClass(filer, "RxHttpNoBodyParam", """
+            package $rxHttpPackage;
+
+            import java.util.List;
+            import java.util.Map;
+            
+            import rxhttp.wrapper.annotations.NonNull;
+            import rxhttp.wrapper.param.NoBodyParam;
+
+            /**
+             * Github
+             * https://github.com/liujingxing/RxHttp
+             * https://github.com/liujingxing/RxLife
+             * https://github.com/liujingxing/okhttp-RxHttp/wiki/FAQ
+             * https://github.com/liujingxing/okhttp-RxHttp/wiki/更新日志
+             */
+            public class RxHttpNoBodyParam extends RxHttp<NoBodyParam, RxHttpNoBodyParam> {
+                public RxHttpNoBodyParam(NoBodyParam param) {
+                    super(param);
+                }
+                
+                public RxHttpNoBodyParam add(String key, Object value) {
+                    return addQuery(key, value);
+                }
+                
+                public RxHttpNoBodyParam add(String key, Object value, boolean isAdd) {
+                    if (isAdd) {
+                        addQuery(key, value);
+                    }
+                    return this;
+                }
+                
+                public RxHttpNoBodyParam addAll(Map<String, ?> map) {
+                    return addAllQuery(map);
+                }
+
+                public RxHttpNoBodyParam addEncoded(String key, Object value) {
+                    return addEncodedQuery(key, value);
+                }
+                
+                public RxHttpNoBodyParam addAllEncoded(@NonNull Map<String, ?> map) {
+                    return addAllEncodedQuery(map);
+                }
+
+                public RxHttpNoBodyParam set(String key, Object value) {
+                    return setQuery(key, value);
+                }
+
+                public RxHttpNoBodyParam setEncoded(String key, Object value) {
+                    return setEncodedQuery(key, value); 
+                }
+            }
+
+        """.trimIndent())
+    }
+
+    private fun generatorRxHttpFormParam(filer: Filer, isAndroid: Boolean) {
+        generatorClass(filer, "RxHttpFormParam", """
+            package $rxHttpPackage;
+
+            ${if (isAndroid) "import android.content.Context;" else ""}
+            ${if (isAndroid) "import android.net.Uri;" else ""}
+
+            import java.io.File;
+            import java.util.List;
+            import java.util.Map;
+            import java.util.Map.Entry;
+
+            import okhttp3.Headers;
+            import okhttp3.MediaType;
+            import okhttp3.MultipartBody.Part;
+            import okhttp3.RequestBody;
+            import rxhttp.wrapper.annotations.NonNull;
+            import rxhttp.wrapper.annotations.Nullable;
+            import rxhttp.wrapper.entity.UpFile;
+            import rxhttp.wrapper.param.FormParam;
+            import rxhttp.wrapper.utils.UriUtil;
+
+            /**
+             * Github
+             * https://github.com/liujingxing/RxHttp
+             * https://github.com/liujingxing/RxLife
+             * https://github.com/liujingxing/okhttp-RxHttp/wiki/FAQ
+             * https://github.com/liujingxing/okhttp-RxHttp/wiki/更新日志
+             */
+            public class RxHttpFormParam extends RxHttpAbstractBodyParam<FormParam, RxHttpFormParam> {
+                public RxHttpFormParam(FormParam param) {
+                    super(param);
+                }
+
+                public RxHttpFormParam add(String key, Object value) {
+                  param.add(key,value);
+                  return this;
+                }
+                
+                public RxHttpFormParam add(String key, Object value, boolean isAdd) {
+                  if(isAdd) {
+                    param.add(key,value);
+                  }
+                  return this;
+                }
+                
+                public RxHttpFormParam addAll(Map<String, ?> map) {
+                  param.addAll(map);
+                  return this;
+                }
+                
+                public RxHttpFormParam addEncoded(String key, Object value) {
+                    param.addEncoded(key, value);
+                    return this;
+                }
+                
+                public RxHttpFormParam addAllEncoded(@NonNull Map<String, ?> map) {
+                    param.addAllEncoded(map);
+                    return this;
+                }
+
+                public RxHttpFormParam removeAllBody() {
+                    param.removeAllBody();
+                    return this;
+                }
+
+                public RxHttpFormParam removeAllBody(String key) {
+                    param.removeAllBody(key);
+                    return this;
+                }
+
+                public RxHttpFormParam set(String key, Object value) {
+                    param.set(key, value);
+                    return this;
+                }
+
+                public RxHttpFormParam setEncoded(String key, Object value) {
+                    param.setEncoded(key, value);
+                    return this;
+                }
+
+                /**
+                 * @deprecated please user {@link #addFile(String, File)} instead
+                 */
+                @Deprecated
+                public RxHttpFormParam add(String key, File file) {
+                    param.addFile(key, file);
+                    return this;
+                }
+
+                public RxHttpFormParam addFile(String key, File file) {
+                    param.addFile(key, file);
+                    return this;
+                }
+
+                public RxHttpFormParam addFile(String key, String filePath) {
+                    param.addFile(key, filePath);
+                    return this;
+                }
+
+                public RxHttpFormParam addFile(String key, String filename, String filePath) {
+                    param.addFile(key, filename, filePath);
+                    return this;
+                }
+
+                public RxHttpFormParam addFile(String key, String filename, File file) {
+                    param.addFile(key, filename, file);
+                    return this;
+                }
+
+                public RxHttpFormParam addFile(UpFile file) {
+                    param.addFile(file);
+                    return this;
+                }
+
+                public RxHttpFormParam addFile(String key, List<? extends File> fileList) {
+                    param.addFile(key, fileList);
+                    return this;
+                }
+
+                public RxHttpFormParam addFile(List<? extends UpFile> fileList) {
+                    param.addFile(fileList);
+                    return this;
+                }
+
+                public RxHttpFormParam addPart(@Nullable MediaType contentType, byte[] content) {
+                    param.addPart(contentType, content);
+                    return this;
+                }
+
+                public RxHttpFormParam addPart(@Nullable MediaType contentType, byte[] content, int offset,
+                                               int byteCount) {
+                    param.addPart(contentType, content, offset, byteCount);
+                    return this;
+                }
+                ${
+                if (isAndroid) """
+                public RxHttpFormParam addPart(Context context, Uri uri) {
+                    param.addPart(UriUtil.asRequestBody(uri, context));
+                    return this;
+                }
+
+                public RxHttpFormParam addPart(Context context, String key, Uri uri) {
+                    param.addPart(UriUtil.asPart(uri, context, key));
+                    return this;
+                }
+
+                public RxHttpFormParam addPart(Context context, String key, String fileName, Uri uri) {
+                    param.addPart(UriUtil.asPart(uri, context, key, fileName));
+                    return this;
+                }
+
+                public RxHttpFormParam addPart(Context context, Uri uri, @Nullable MediaType contentType) {
+                    param.addPart(UriUtil.asRequestBody(uri, context, contentType));
+                    return this;
+                }
+
+                public RxHttpFormParam addPart(Context context, String key, Uri uri,
+                                               @Nullable MediaType contentType) {
+                    param.addPart(UriUtil.asPart(uri, context, key, null, contentType));
+                    return this;
+                }
+
+                public RxHttpFormParam addPart(Context context, String key, String filename, Uri uri,
+                                               @Nullable MediaType contentType) {
+                    param.addPart(UriUtil.asPart(uri, context, key, filename, contentType));
+                    return this;
+                }
+
+                public RxHttpFormParam addParts(Context context, Map<String, Uri> uriMap) {
+                    for (Entry<String, Uri> entry : uriMap.entrySet()) {
+                        addPart(context, entry.getKey(), entry.getValue());
+                    }
+                    return this;
+                }
+
+                public RxHttpFormParam addParts(Context context, List<Uri> uris) {
+                    for (Uri uri : uris) {
+                        addPart(context, uri);
+                    }
+                    return this;
+                }
+
+                public RxHttpFormParam addParts(Context context, String key, List<Uri> uris) {
+                    for (Uri uri : uris) {
+                        addPart(context, key, uri);
+                    }
+                    return this;
+                }
+
+                public RxHttpFormParam addParts(Context context, List<Uri> uris,
+                                                @Nullable MediaType contentType) {
+                    for (Uri uri : uris) {
+                        addPart(context, uri, contentType);
+                    }
+                    return this;
+                }
+
+                public RxHttpFormParam addParts(Context context, String key, List<Uri> uris,
+                                                @Nullable MediaType contentType) {
+                    for (Uri uri : uris) {
+                        addPart(context, key, uri, contentType);
+                    }
+                    return this;
+                }
+                """ else ""
+                }
+                public RxHttpFormParam addPart(Part part) {
+                    param.addPart(part);
+                    return this;
+                }
+
+                public RxHttpFormParam addPart(RequestBody requestBody) {
+                    param.addPart(requestBody);
+                    return this;
+                }
+
+                public RxHttpFormParam addPart(Headers headers, RequestBody requestBody) {
+                    param.addPart(headers, requestBody);
+                    return this;
+                }
+
+                public RxHttpFormParam addFormDataPart(String key, String fileName, RequestBody requestBody) {
+                    param.addFormDataPart(key, fileName, requestBody);
+                    return this;
+                }
+
+                public RxHttpFormParam setMultiForm() {
+                    param.setMultiForm();
+                    return this;
+                }
+            }
+
+        """.trimIndent())
+    }
+
+    private fun generatorRxHttpJsonParam(filer: Filer) {
+        generatorClass(filer, "RxHttpJsonParam", """
+            package $rxHttpPackage;
+
+            import com.google.gson.JsonObject;
+
+            import java.util.Map;
+            
+            import rxhttp.wrapper.param.JsonParam;
+            /**
+             * Github
+             * https://github.com/liujingxing/RxHttp
+             * https://github.com/liujingxing/RxLife
+             * https://github.com/liujingxing/okhttp-RxHttp/wiki/FAQ
+             * https://github.com/liujingxing/okhttp-RxHttp/wiki/更新日志
+             */
+            public class RxHttpJsonParam extends RxHttpAbstractBodyParam<JsonParam, RxHttpJsonParam> {
+                public RxHttpJsonParam(JsonParam param) {
+                    super(param);
+                }
+
+                public RxHttpJsonParam add(String key, Object value) {
+                  param.add(key,value);
+                  return this;
+                }
+                
+                public RxHttpJsonParam add(String key, Object value, boolean isAdd) {
+                  if(isAdd) {
+                    param.add(key,value);
+                  }
+                  return this;
+                }
+                
+                public RxHttpJsonParam addAll(Map<String, ?> map) {
+                  param.addAll(map);
+                  return this;
+                }
+                
+                /**
+                 * 将Json对象里面的key-value逐一取出，添加到另一个Json对象中，
+                 * 输入非Json对象将抛出{@link IllegalStateException}异常
+                 */
+                public RxHttpJsonParam addAll(String jsonObject) {
+                    param.addAll(jsonObject);
+                    return this;
+                }
+
+                /**
+                 * 将Json对象里面的key-value逐一取出，添加到另一个Json对象中
+                 */
+                public RxHttpJsonParam addAll(JsonObject jsonObject) {
+                    param.addAll(jsonObject);
+                    return this;
+                }
+
+                /**
+                 * 添加一个JsonElement对象(Json对象、json数组等)
+                 */
+                public RxHttpJsonParam addJsonElement(String key, String jsonElement) {
+                    param.addJsonElement(key, jsonElement);
+                    return this;
+                }
+            }
+
+        """.trimIndent())
+    }
+
+    private fun generatorRxHttpJsonArrayParam(filer: Filer) {
+        generatorClass(filer, "RxHttpJsonArrayParam", """
+            package $rxHttpPackage;
+
+            import com.google.gson.JsonArray;
+            import com.google.gson.JsonObject;
+
+            import java.util.List;
+            import java.util.Map;
+            
+            import rxhttp.wrapper.param.JsonArrayParam;
+
+            /**
+             * Github
+             * https://github.com/liujingxing/RxHttp
+             * https://github.com/liujingxing/RxLife
+             * https://github.com/liujingxing/okhttp-RxHttp/wiki/FAQ
+             * https://github.com/liujingxing/okhttp-RxHttp/wiki/更新日志
+             */
+            public class RxHttpJsonArrayParam extends RxHttpAbstractBodyParam<JsonArrayParam, RxHttpJsonArrayParam> {
+                public RxHttpJsonArrayParam(JsonArrayParam param) {
+                    super(param);
+                }
+
+                public RxHttpJsonArrayParam add(String key, Object value) {
+                  param.add(key,value);
+                  return this;
+                }
+                
+                public RxHttpJsonArrayParam add(String key, Object value, boolean isAdd) {
+                  if(isAdd) {
+                    param.add(key,value);
+                  }
+                  return this;
+                }
+                
+                public RxHttpJsonArrayParam addAll(Map<String, ?> map) {
+                  param.addAll(map);
+                  return this;
+                }
+
+                public RxHttpJsonArrayParam add(Object object) {
+                    param.add(object);
+                    return this;
+                }
+
+                public RxHttpJsonArrayParam addAll(List<?> list) {
+                    param.addAll(list);
+                    return this;
+                }
+
+                /**
+                 * 添加多个对象，将字符串转JsonElement对象,并根据不同类型,执行不同操作,可输入任意非空字符串
+                 */
+                public RxHttpJsonArrayParam addAll(String jsonElement) {
+                    param.addAll(jsonElement);
+                    return this;
+                }
+
+                public RxHttpJsonArrayParam addAll(JsonArray jsonArray) {
+                    param.addAll(jsonArray);
+                    return this;
+                }
+
+                /**
+                 * 将Json对象里面的key-value逐一取出，添加到Json数组中，成为单独的对象
+                 */
+                public RxHttpJsonArrayParam addAll(JsonObject jsonObject) {
+                    param.addAll(jsonObject);
+                    return this;
+                }
+
+                public RxHttpJsonArrayParam addJsonElement(String jsonElement) {
+                    param.addJsonElement(jsonElement);
+                    return this;
+                }
+
+                /**
+                 * 添加一个JsonElement对象(Json对象、json数组等)
+                 */
+                public RxHttpJsonArrayParam addJsonElement(String key, String jsonElement) {
+                    param.addJsonElement(key, jsonElement);
+                    return this;
+                }
+            }
+
+        """.trimIndent())
+    }
+
+    private fun generatorObservableHttp(filer: Filer) {
         generatorClass(filer, "ObservableHttp", """
                 package $rxHttpPackage;
 
@@ -1151,8 +1613,7 @@ object ClassHelper {
             """.trimIndent())
     }
 
-    @JvmStatic
-    fun generatorObservableUpload(filer: Filer) {
+    private fun generatorObservableUpload(filer: Filer) {
         generatorClass(filer, "ObservableUpload", """
                 package $rxHttpPackage;
 
@@ -1498,8 +1959,7 @@ object ClassHelper {
             """.trimIndent())
     }
 
-    @JvmStatic
-    fun generatorObservableDownload(filer: Filer) {
+    private fun generatorObservableDownload(filer: Filer) {
         generatorClass(filer, "ObservableDownload", """
                 package $rxHttpPackage;
 
@@ -1855,9 +2315,7 @@ object ClassHelper {
             """.trimIndent())
     }
 
-
-    @JvmStatic
-    fun generatorClass(filer: Filer, className: String, content: String) {
+    private fun generatorClass(filer: Filer, className: String, content: String) {
         var writer: BufferedWriter? = null
         try {
             val sourceFile = filer.createSourceFile("$rxHttpPackage.$className")

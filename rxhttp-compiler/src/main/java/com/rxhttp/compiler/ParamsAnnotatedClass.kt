@@ -34,10 +34,6 @@ class ParamsAnnotatedClass {
         val headerBuilderName = ClassName.get("okhttp3", "Headers.Builder")
         val cacheControlName = ClassName.get("okhttp3", "CacheControl")
         val paramName = ClassName.get(packageName, "Param")
-        val noBodyParamName = ClassName.get(packageName, "NoBodyParam")
-        val formParamName = ClassName.get(packageName, "FormParam")
-        val jsonParamName = ClassName.get(packageName, "JsonParam")
-        val jsonArrayParamName = ClassName.get(packageName, "JsonArrayParam")
         val cacheModeName = ClassName.get("rxhttp.wrapper.cahce", "CacheMode")
         val cacheStrategyName = ClassName.get("rxhttp.wrapper.cahce", "CacheStrategy")
         val downloadOffSizeName = ClassName.get("rxhttp.wrapper.entity", "DownloadOffSize")
@@ -84,7 +80,7 @@ class ParamsAnnotatedClass {
                 .addParameter(String::class.java, "url")
                 .addParameter(ArrayTypeName.of(Any::class.java), "formatArgs")
                 .varargs()
-                .addStatement("return with(\$T.\$L(format(url, formatArgs)))", paramName, key)
+                .addStatement("return new $value(\$T.\$L(format(url, formatArgs)))", paramName, key)
                 .returns(ClassName.get(rxHttpPackage, value))
                 .build())
         }
@@ -147,10 +143,11 @@ class ParamsAnnotatedClass {
                 "rxhttp.wrapper.param.NoBodyParam" -> ClassName.get(rxHttpPackage, "RxHttpNoBodyParam")
                 else -> {
                     val typeName = TypeName.get(superclass)
-                    if ((typeName as? ParameterizedTypeName)?.rawType?.toString() == "rxhttp.wrapper.param.BodyParam") {
+                    if ((typeName as? ParameterizedTypeName)?.rawType?.toString() == "rxhttp.wrapper.param.AbstractBodyParam") {
                         prefix = "param."
-                        val rxHttpBodyParam = ClassName.get(rxHttpPackage, "RxHttpBodyParam")
-                        ParameterizedTypeName.get(rxHttpBodyParam, param, rxHttpParamName)
+                        ClassName.get(rxHttpPackage, "RxHttpAbstractBodyParam").let {
+                            ParameterizedTypeName.get(it, param, rxHttpParamName)
+                        }
                     } else {
                         prefix = "param."
                         ParameterizedTypeName.get(RXHTTP, param, rxHttpParamName)
@@ -229,37 +226,6 @@ class ParamsAnnotatedClass {
             JavaFile.builder(rxHttpPackage, rxHttpPostEncryptFormParamSpec)
                 .build().writeTo(filer)
         }
-        methodList.add(
-            MethodSpec.methodBuilder("with")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter(noBodyParamName, "noBodyParam")
-                .addStatement("return new \$L(noBodyParam)", "RxHttpNoBodyParam")
-                .returns(ClassName.get(rxHttpPackage, "RxHttpNoBodyParam"))
-                .build())
-
-        methodList.add(
-            MethodSpec.methodBuilder("with")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter(formParamName, "formParam")
-                .addStatement("return new \$L(formParam)", "RxHttpFormParam")
-                .returns(ClassName.get(rxHttpPackage, "RxHttpFormParam"))
-                .build())
-
-        methodList.add(
-            MethodSpec.methodBuilder("with")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter(jsonParamName, "jsonParam")
-                .addStatement("return new \$L(jsonParam)", "RxHttpJsonParam")
-                .returns(ClassName.get(rxHttpPackage, "RxHttpJsonParam"))
-                .build())
-
-        methodList.add(
-            MethodSpec.methodBuilder("with")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter(jsonArrayParamName, "jsonArrayParam")
-                .addStatement("return new \$L(jsonArrayParam)", "RxHttpJsonArrayParam")
-                .returns(ClassName.get(rxHttpPackage, "RxHttpJsonArrayParam"))
-                .build())
 
         methodList.add(
             MethodSpec.methodBuilder("setUrl")
@@ -271,33 +237,94 @@ class ParamsAnnotatedClass {
                 .build())
 
         methodList.add(
-            MethodSpec.methodBuilder("add")
+            MethodSpec.methodBuilder("removeAllQuery")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(String::class.java, "key")
-                .addParameter(Any::class.java, "value")
-                .addStatement("param.add(key,value)")
+                .addStatement("param.removeAllQuery()")
                 .addStatement("return (R)this")
                 .returns(rxHttp)
                 .build())
 
         methodList.add(
-            MethodSpec.methodBuilder("add")
+            MethodSpec.methodBuilder("removeAllQuery")
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(String::class.java, "key")
-                .addParameter(Any::class.java, "value")
-                .addParameter(Boolean::class.javaPrimitiveType, "isAdd")
-                .beginControlFlow("if(isAdd)")
-                .addStatement("param.add(key,value)")
-                .endControlFlow()
+                .addStatement("param.removeAllQuery(key)")
                 .addStatement("return (R)this")
                 .returns(rxHttp)
                 .build())
 
         methodList.add(
-            MethodSpec.methodBuilder("addAll")
+            MethodSpec.methodBuilder("addQuery")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(String::class.java, "key")
+                .addParameter(Any::class.java, "value")
+                .addStatement("param.addQuery(key,value)")
+                .addStatement("return (R)this")
+                .returns(rxHttp)
+                .build())
+
+        methodList.add(
+            MethodSpec.methodBuilder("setQuery")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(String::class.java, "key")
+                .addParameter(Any::class.java, "value")
+                .addStatement("param.setQuery(key,value)")
+                .addStatement("return (R)this")
+                .returns(rxHttp)
+                .build())
+
+        methodList.add(
+            MethodSpec.methodBuilder("addEncodedQuery")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(String::class.java, "key")
+                .addParameter(Any::class.java, "value")
+                .addStatement("param.addEncodedQuery(key,value)")
+                .addStatement("return (R)this")
+                .returns(rxHttp)
+                .build())
+
+        methodList.add(
+            MethodSpec.methodBuilder("setEncodedQuery")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(String::class.java, "key")
+                .addParameter(Any::class.java, "value")
+                .addStatement("param.setEncodedQuery(key,value)")
+                .addStatement("return (R)this")
+                .returns(rxHttp)
+                .build())
+
+        methodList.add(
+            MethodSpec.methodBuilder("addAllQuery")
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(mapName, "map")
-                .addStatement("param.addAll(map)")
+                .addStatement("param.addAllQuery(map)")
+                .addStatement("return (R)this")
+                .returns(rxHttp)
+                .build())
+
+        methodList.add(
+            MethodSpec.methodBuilder("setAllQuery")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(mapName, "map")
+                .addStatement("param.setAllQuery(map)")
+                .addStatement("return (R)this")
+                .returns(rxHttp)
+                .build())
+
+        methodList.add(
+            MethodSpec.methodBuilder("addAllEncodedQuery")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(mapName, "map")
+                .addStatement("param.addAllEncodedQuery(map)")
+                .addStatement("return (R)this")
+                .returns(rxHttp)
+                .build())
+
+        methodList.add(
+            MethodSpec.methodBuilder("setAllEncodedQuery")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(mapName, "map")
+                .addStatement("param.setAllEncodedQuery(map)")
                 .addStatement("return (R)this")
                 .returns(rxHttp)
                 .build())
@@ -319,6 +346,28 @@ class ParamsAnnotatedClass {
                 .beginControlFlow("if(isAdd)")
                 .addStatement("param.addHeader(line)")
                 .endControlFlow()
+                .addStatement("return (R)this")
+                .returns(rxHttp)
+                .build())
+
+        methodList.add(
+            MethodSpec.methodBuilder("addNonAsciiHeader")
+                .addJavadoc("Add a header with the specified name and value. Does validation of header names, allowing non-ASCII values.")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(String::class.java, "key")
+                .addParameter(String::class.java, "value")
+                .addStatement("param.addNonAsciiHeader(key,value)")
+                .addStatement("return (R)this")
+                .returns(rxHttp)
+                .build())
+
+        methodList.add(
+            MethodSpec.methodBuilder("setNonAsciiHeader")
+                .addJavadoc("Set a header with the specified name and value. Does validation of header names, allowing non-ASCII values.")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(String::class.java, "key")
+                .addParameter(String::class.java, "value")
+                .addStatement("param.setNonAsciiHeader(key,value)")
                 .addStatement("return (R)this")
                 .returns(rxHttp)
                 .build())
@@ -370,6 +419,15 @@ class ParamsAnnotatedClass {
                 .addParameter(String::class.java, "key")
                 .addParameter(String::class.java, "value")
                 .addStatement("param.setHeader(key,value)")
+                .addStatement("return (R)this")
+                .returns(rxHttp)
+                .build())
+
+        methodList.add(
+            MethodSpec.methodBuilder("setAllHeader")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(mapStringName, "headers")
+                .addStatement("param.setAllHeader(headers)")
                 .addStatement("return (R)this")
                 .returns(rxHttp)
                 .build())

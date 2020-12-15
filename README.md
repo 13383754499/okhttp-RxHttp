@@ -68,9 +68,9 @@ android {
 }
 
 dependencies {
-    implementation 'com.ljx.rxhttp:rxhttp:2.4.3'
+    implementation 'com.ljx.rxhttp:rxhttp:2.5.1'
     implementation 'com.squareup.okhttp3:okhttp:4.9.0' //rxhttp v2.2.2版本起，需要手动依赖okhttp
-    kapt 'com.ljx.rxhttp:rxhttp-compiler:2.4.3' //生成RxHttp类，纯Java项目，请使用annotationProcessor代替kapt
+    kapt 'com.ljx.rxhttp:rxhttp-compiler:2.5.1' //生成RxHttp类，纯Java项目，请使用annotationProcessor代替kapt
  }
 ```
 
@@ -103,11 +103,11 @@ dependencies {
     implementation 'com.ljx.rxlife3:rxlife-rxjava:3.0.0' //管理RxJava3生命周期，页面销毁，关闭请求
 
     //非必须，根据自己需求选择 RxHttp默认内置了GsonConverter
-    implementation 'com.ljx.rxhttp:converter-fastjson:2.4.3'
-    implementation 'com.ljx.rxhttp:converter-jackson:2.4.3'
-    implementation 'com.ljx.rxhttp:converter-moshi:2.4.3'
-    implementation 'com.ljx.rxhttp:converter-protobuf:2.4.3'
-    implementation 'com.ljx.rxhttp:converter-simplexml:2.4.3'
+    implementation 'com.ljx.rxhttp:converter-fastjson:2.5.1'
+    implementation 'com.ljx.rxhttp:converter-jackson:2.5.1'
+    implementation 'com.ljx.rxhttp:converter-moshi:2.5.1'
+    implementation 'com.ljx.rxhttp:converter-protobuf:2.5.1'
+    implementation 'com.ljx.rxhttp:converter-simplexml:2.5.1'
 }
 ```
 
@@ -118,6 +118,11 @@ dependencies {
 
 `RxHttp v2.2.8`版本起，无需添加任何混淆规则(内部自带混淆规则)，v2.2.8以下版本，请[查看混淆规则](https://github.com/liujingxing/okhttp-RxHttp/wiki/关于混淆),并添加到自己项目中
 
+# 友情链接
+
+[开源阅读 3.0](https://github.com/gedoor/legado)
+
+`注：如果你的项目用到了RxHttp，想要在这里展示，请联系我。`
 
 # 小技巧
 

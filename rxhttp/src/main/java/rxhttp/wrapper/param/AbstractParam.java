@@ -2,8 +2,9 @@ package rxhttp.wrapper.param;
 
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 
 import okhttp3.CacheControl;
@@ -18,7 +19,9 @@ import rxhttp.wrapper.annotations.Nullable;
 import rxhttp.wrapper.cahce.CacheMode;
 import rxhttp.wrapper.cahce.CacheStrategy;
 import rxhttp.wrapper.callback.IConverter;
+import rxhttp.wrapper.entity.KeyValuePair;
 import rxhttp.wrapper.utils.BuildUtil;
+import rxhttp.wrapper.utils.CacheUtil;
 import rxhttp.wrapper.utils.LogUtil;
 
 /**
@@ -30,109 +33,110 @@ import rxhttp.wrapper.utils.LogUtil;
 @SuppressWarnings("unchecked")
 public abstract class AbstractParam<P extends Param<P>> implements Param<P> {
 
-    private String mUrl;    //链接地址
-    private Builder mHBuilder; //请求头构造器
-    private final Method mMethod;  //请求方法
-    private final CacheStrategy mCacheStrategy;
+    private String url;    //链接地址
+    private Builder HBuilder; //请求头构造器
+    private final Method method;  //请求方法
+    private final CacheStrategy cacheStrategy;  //缓存策略
+    private List<KeyValuePair> queryParam; //查询参数，拼接在Url后面
     private final Request.Builder requestBuilder = new Request.Builder(); //请求构造器
 
-    private boolean mIsAssemblyEnabled = true;//是否添加公共参数
-
+    private boolean isAssemblyEnabled = true;//是否添加公共参数
 
     /**
      * @param url    请求路径
      * @param method Method#GET  Method#HEAD  Method#POST  Method#PUT  Method#DELETE  Method#PATCH
      */
     public AbstractParam(@NonNull String url, Method method) {
-        this.mUrl = url;
-        this.mMethod = method;
-        mCacheStrategy = RxHttpPlugins.getCacheStrategy();
+        this.url = url;
+        this.method = method;
+        cacheStrategy = RxHttpPlugins.getCacheStrategy();
     }
 
     public P setUrl(@NonNull String url) {
-        mUrl = url;
+        this.url = url;
         return (P) this;
     }
 
     @Override
-    public HttpUrl getHttpUrl() {
-        return HttpUrl.get(mUrl);
-    }
-
-    /**
-     * @return 不带参数的url
-     */
-    @Override
-    public final String getSimpleUrl() {
-        return mUrl;
+    public P addQuery(String key, Object value) {
+        if (value == null) value = "";
+        return addQuery(new KeyValuePair(key, value));
     }
 
     @Override
-    public Method getMethod() {
-        return mMethod;
-    }
-
-    @Nullable
-    @Override
-    public final Headers getHeaders() {
-        return mHBuilder == null ? null : mHBuilder.build();
+    public P addEncodedQuery(String key, Object value) {
+        if (value == null) value = "";
+        return addQuery(new KeyValuePair(key, value, true));
     }
 
     @Override
-    public final Builder getHeadersBuilder() {
-        if (mHBuilder == null)
-            mHBuilder = new Builder();
-        return mHBuilder;
-    }
-
-    @Override
-    public P setHeadersBuilder(Builder builder) {
-        mHBuilder = builder;
+    public P removeAllQuery() {
+        final List<KeyValuePair> pairs = queryParam;
+        if (pairs != null) pairs.clear();
         return (P) this;
     }
 
     @Override
-    public final P addHeader(String key, String value) {
-        getHeadersBuilder().add(key, value);
-        return (P) this;
-    }
-
-    @Override
-    public final P addHeader(String line) {
-        getHeadersBuilder().add(line);
-        return (P) this;
-    }
-
-    @Override
-    public P addAllHeader(Map<String, String> headers) {
-        if (headers != null) {
-            for (Entry<String, String> entry : headers.entrySet()) {
-                addHeader(entry.getKey(), entry.getValue());
+    public P removeAllQuery(String key) {
+        final List<KeyValuePair> pairs = queryParam;
+        if (pairs != null) {
+            Iterator<KeyValuePair> iterator = pairs.iterator();
+            while (iterator.hasNext()) {
+                KeyValuePair next = iterator.next();
+                if (next.equals(key))
+                    iterator.remove();
             }
         }
         return (P) this;
     }
 
-    @Override
-    public P addAllHeader(Headers headers) {
-        getHeadersBuilder().addAll(headers);
+    private P addQuery(KeyValuePair keyValuePair) {
+        if (queryParam == null) queryParam = new ArrayList<>();
+        queryParam.add(keyValuePair);
         return (P) this;
     }
 
-    @Override
-    public final P setHeader(String key, String value) {
-        getHeadersBuilder().set(key, value);
-        return (P) this;
+    @Nullable
+    public List<KeyValuePair> getQueryParam() {
+        return queryParam;
     }
 
     @Override
-    public final String getHeader(String key) {
-        return getHeadersBuilder().get(key);
+    public final String getUrl() {
+        return getHttpUrl().toString();
     }
 
     @Override
-    public final P removeAllHeader(String key) {
-        getHeadersBuilder().removeAll(key);
+    public final String getSimpleUrl() {
+        return url;
+    }
+
+    @Override
+    public HttpUrl getHttpUrl() {
+        return BuildUtil.getHttpUrl(url, queryParam);
+    }
+
+    @Override
+    public Method getMethod() {
+        return method;
+    }
+
+    @Nullable
+    @Override
+    public final Headers getHeaders() {
+        return HBuilder == null ? null : HBuilder.build();
+    }
+
+    @Override
+    public final Builder getHeadersBuilder() {
+        if (HBuilder == null)
+            HBuilder = new Builder();
+        return HBuilder;
+    }
+
+    @Override
+    public P setHeadersBuilder(Builder builder) {
+        HBuilder = builder;
         return (P) this;
     }
 
@@ -150,13 +154,13 @@ public abstract class AbstractParam<P extends Param<P>> implements Param<P> {
 
     @Override
     public final P setAssemblyEnabled(boolean enabled) {
-        mIsAssemblyEnabled = enabled;
+        isAssemblyEnabled = enabled;
         return (P) this;
     }
 
     @Override
     public final boolean isAssemblyEnabled() {
-        return mIsAssemblyEnabled;
+        return isAssemblyEnabled;
     }
 
     public Request.Builder getRequestBuilder() {
@@ -165,41 +169,48 @@ public abstract class AbstractParam<P extends Param<P>> implements Param<P> {
 
     @Override
     public final CacheStrategy getCacheStrategy() {
-        String cacheKey = getCacheKey();
-        mCacheStrategy.setCacheKey(cacheKey);
-        return mCacheStrategy;
+        if (getCacheKey() == null) {
+            setCacheKey(buildCacheKey());
+        }
+        return cacheStrategy;
     }
 
     @Override
-    public String getCacheKey() {
-        return mCacheStrategy.getCacheKey();
+    public final String getCacheKey() {
+        return cacheStrategy.getCacheKey();
     }
 
     @Override
     public final P setCacheKey(String cacheKey) {
-        mCacheStrategy.setCacheKey(cacheKey);
+        cacheStrategy.setCacheKey(cacheKey);
         return (P) this;
+    }
+
+    @NonNull
+    public String buildCacheKey() {
+        List<KeyValuePair> queryPairs = CacheUtil.excludeCacheKey(getQueryParam());
+        return BuildUtil.getHttpUrl(getSimpleUrl(), queryPairs).toString();
     }
 
     @Override
     public final long getCacheValidTime() {
-        return mCacheStrategy.getCacheValidTime();
+        return cacheStrategy.getCacheValidTime();
     }
 
     @Override
     public final P setCacheValidTime(long cacheTime) {
-        mCacheStrategy.setCacheValidTime(cacheTime);
+        cacheStrategy.setCacheValidTime(cacheTime);
         return (P) this;
     }
 
     @Override
     public final CacheMode getCacheMode() {
-        return mCacheStrategy.getCacheMode();
+        return cacheStrategy.getCacheMode();
     }
 
     @Override
     public final P setCacheMode(CacheMode cacheMode) {
-        mCacheStrategy.setCacheMode(cacheMode);
+        cacheStrategy.setCacheMode(cacheMode);
         return (P) this;
     }
 

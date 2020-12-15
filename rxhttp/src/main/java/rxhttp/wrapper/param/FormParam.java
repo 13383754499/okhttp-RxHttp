@@ -1,9 +1,10 @@
 package rxhttp.wrapper.param;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import okhttp3.MultipartBody.Part;
 import okhttp3.RequestBody;
@@ -23,12 +24,12 @@ import rxhttp.wrapper.utils.CacheUtil;
  * Date: 2019-09-09
  * Time: 21:08
  */
-public class FormParam extends BodyParam<FormParam> implements IPart<FormParam> {
+public class FormParam extends AbstractBodyParam<FormParam> implements IPart<FormParam> {
 
     private boolean isMultiForm;
 
     private List<Part> mPartList;  //Part List
-    private List<KeyValuePair> mKeyValuePairs; //Param list
+    private List<KeyValuePair> bodyParam; //Param list
 
     /**
      * @param url    request url
@@ -39,19 +40,27 @@ public class FormParam extends BodyParam<FormParam> implements IPart<FormParam> 
     }
 
     @Override
-    public FormParam add(String key, Object value) {
+    public FormParam add(String key, @Nullable Object value) {
         if (value == null) value = "";
         return add(new KeyValuePair(key, value));
     }
 
-    public FormParam addEncoded(String key, Object value) {
+    public FormParam addEncoded(String key, @Nullable Object value) {
+        if (value == null) value = "";
         return add(new KeyValuePair(key, value, true));
     }
 
+    public FormParam addAllEncoded(@NonNull Map<String, ?> map) {
+        for (Entry<String, ?> entry : map.entrySet()) {
+            addEncoded(entry.getKey(), entry.getValue());
+        }
+        return this;
+    }
+
     public FormParam removeAllBody(String key) {
-        final List<KeyValuePair> keyValuePairs = mKeyValuePairs;
-        if (keyValuePairs == null) return this;
-        Iterator<KeyValuePair> iterator = keyValuePairs.iterator();
+        final List<KeyValuePair> bodyParam = this.bodyParam;
+        if (bodyParam == null) return this;
+        Iterator<KeyValuePair> iterator = bodyParam.iterator();
         while (iterator.hasNext()) {
             KeyValuePair next = iterator.next();
             if (next.equals(key))
@@ -61,9 +70,9 @@ public class FormParam extends BodyParam<FormParam> implements IPart<FormParam> 
     }
 
     public FormParam removeAllBody() {
-        final List<KeyValuePair> keyValuePairs = mKeyValuePairs;
-        if (keyValuePairs != null)
-            keyValuePairs.clear();
+        final List<KeyValuePair> bodyParam = this.bodyParam;
+        if (bodyParam != null)
+            bodyParam.clear();
         return this;
     }
 
@@ -77,35 +86,12 @@ public class FormParam extends BodyParam<FormParam> implements IPart<FormParam> 
         return addEncoded(key, value);
     }
 
-    @Nullable
-    public Object queryValue(String key) {
-        final List<KeyValuePair> keyValuePairs = mKeyValuePairs;
-        if (keyValuePairs == null) return this;
-        for (KeyValuePair pair : keyValuePairs) {
-            if (pair.equals(key))
-                return pair.getValue();
-        }
-        return null;
-    }
-
-    @NonNull
-    public List<Object> queryValues(String key) {
-        final List<KeyValuePair> keyValuePairs = mKeyValuePairs;
-        if (keyValuePairs == null) return Collections.emptyList();
-        List<Object> values = new ArrayList<>();
-        for (KeyValuePair pair : keyValuePairs) {
-            if (pair.equals(key))
-                values.add(pair.getValue());
-        }
-        return Collections.unmodifiableList(values);
-    }
-
     private FormParam add(KeyValuePair keyValuePair) {
-        List<KeyValuePair> keyValuePairs = mKeyValuePairs;
-        if (keyValuePairs == null) {
-            keyValuePairs = mKeyValuePairs = new ArrayList<>();
+        List<KeyValuePair> bodyParam = this.bodyParam;
+        if (bodyParam == null) {
+            bodyParam = this.bodyParam = new ArrayList<>();
         }
-        keyValuePairs.add(keyValuePair);
+        bodyParam.add(keyValuePair);
         return this;
     }
 
@@ -128,16 +114,25 @@ public class FormParam extends BodyParam<FormParam> implements IPart<FormParam> 
 
     @Override
     public RequestBody getRequestBody() {
-        return isMultiForm() ? BuildUtil.buildFormRequestBody(mKeyValuePairs, mPartList)
-            : BuildUtil.buildFormRequestBody(mKeyValuePairs);
+        return isMultiForm() ? BuildUtil.buildFormRequestBody(bodyParam, mPartList)
+            : BuildUtil.buildFormRequestBody(bodyParam);
     }
 
     public List<Part> getPartList() {
         return mPartList;
     }
 
+    /**
+     * @return List
+     * @deprecated please user {@link #getBodyParam()} instead
+     */
+    @Deprecated
     public List<KeyValuePair> getKeyValuePairs() {
-        return mKeyValuePairs;
+        return getBodyParam();
+    }
+
+    public List<KeyValuePair> getBodyParam() {
+        return bodyParam;
     }
 
     public boolean isMultiForm() {
@@ -145,15 +140,20 @@ public class FormParam extends BodyParam<FormParam> implements IPart<FormParam> 
     }
 
     @Override
-    public String getCacheKey() {
-        String cacheKey = super.getCacheKey();
-        if (cacheKey != null) return cacheKey;
-        List<KeyValuePair> keyValuePairs = CacheUtil.excludeCacheKey(mKeyValuePairs);
-        return BuildUtil.getHttpUrl(getSimpleUrl(), keyValuePairs).toString();
+    public String buildCacheKey() {
+        List<KeyValuePair> cachePairs = new ArrayList<>();
+        List<KeyValuePair> queryPairs = getQueryParam();
+        List<KeyValuePair> bodyPairs = bodyParam;
+        if (queryPairs != null)
+            cachePairs.addAll(queryPairs);
+        if (bodyPairs != null)
+            cachePairs.addAll(bodyPairs);
+        List<KeyValuePair> pairs = CacheUtil.excludeCacheKey(cachePairs);
+        return BuildUtil.getHttpUrl(getSimpleUrl(), pairs).toString();
     }
 
     @Override
     public String toString() {
-        return BuildUtil.getHttpUrl(getSimpleUrl(), mKeyValuePairs).toString();
+        return BuildUtil.getHttpUrl(getSimpleUrl(), bodyParam).toString();
     }
 }

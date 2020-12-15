@@ -4,11 +4,9 @@ import com.example.httpsender.RxHttpManager;
 import com.example.httpsender.entity.PageList;
 import com.example.httpsender.entity.Url;
 import com.example.httpsender.param.GetEncryptParam;
-import com.example.httpsender.param.PostBodyParam;
 import com.example.httpsender.param.PostEncryptFormParam;
 import com.example.httpsender.param.PostEncryptJsonParam;
 import com.example.httpsender.param.PostEncryptJsonParam1;
-import com.example.httpsender.param.PostText;
 import com.example.httpsender.parser.ResponseParser;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Scheduler;
@@ -159,7 +157,7 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
 
     if (param.getCacheMode() != CacheMode.ONLY_NETWORK) {                      
       if (builder == null) builder = okHttpClient.newBuilder();              
-      builder.addInterceptor(new CacheInterceptor(param.getCacheStrategy()));
+      builder.addInterceptor(new CacheInterceptor(getCacheStrategy()));
     }
                                                                             
     realOkClient = builder != null ? builder.build() : okHttpClient;
@@ -193,63 +191,62 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
    * ```                                                  
    */
   public static RxHttpNoBodyParam get(String url, Object... formatArgs) {
-    return with(Param.get(format(url, formatArgs)));
+    return new RxHttpNoBodyParam(Param.get(format(url, formatArgs)));
   }
 
   public static RxHttpNoBodyParam head(String url, Object... formatArgs) {
-    return with(Param.head(format(url, formatArgs)));
+    return new RxHttpNoBodyParam(Param.head(format(url, formatArgs)));
   }
 
   public static RxHttpFormParam postForm(String url, Object... formatArgs) {
-    return with(Param.postForm(format(url, formatArgs)));
+    return new RxHttpFormParam(Param.postForm(format(url, formatArgs)));
   }
 
   public static RxHttpFormParam putForm(String url, Object... formatArgs) {
-    return with(Param.putForm(format(url, formatArgs)));
+    return new RxHttpFormParam(Param.putForm(format(url, formatArgs)));
   }
 
   public static RxHttpFormParam patchForm(String url, Object... formatArgs) {
-    return with(Param.patchForm(format(url, formatArgs)));
+    return new RxHttpFormParam(Param.patchForm(format(url, formatArgs)));
   }
 
   public static RxHttpFormParam deleteForm(String url, Object... formatArgs) {
-    return with(Param.deleteForm(format(url, formatArgs)));
+    return new RxHttpFormParam(Param.deleteForm(format(url, formatArgs)));
   }
 
   public static RxHttpJsonParam postJson(String url, Object... formatArgs) {
-    return with(Param.postJson(format(url, formatArgs)));
+    return new RxHttpJsonParam(Param.postJson(format(url, formatArgs)));
   }
 
   public static RxHttpJsonParam putJson(String url, Object... formatArgs) {
-    return with(Param.putJson(format(url, formatArgs)));
+    return new RxHttpJsonParam(Param.putJson(format(url, formatArgs)));
   }
 
   public static RxHttpJsonParam patchJson(String url, Object... formatArgs) {
-    return with(Param.patchJson(format(url, formatArgs)));
+    return new RxHttpJsonParam(Param.patchJson(format(url, formatArgs)));
   }
 
   public static RxHttpJsonParam deleteJson(String url, Object... formatArgs) {
-    return with(Param.deleteJson(format(url, formatArgs)));
+    return new RxHttpJsonParam(Param.deleteJson(format(url, formatArgs)));
   }
 
   public static RxHttpJsonArrayParam postJsonArray(String url, Object... formatArgs) {
-    return with(Param.postJsonArray(format(url, formatArgs)));
+    return new RxHttpJsonArrayParam(Param.postJsonArray(format(url, formatArgs)));
   }
 
   public static RxHttpJsonArrayParam putJsonArray(String url, Object... formatArgs) {
-    return with(Param.putJsonArray(format(url, formatArgs)));
+    return new RxHttpJsonArrayParam(Param.putJsonArray(format(url, formatArgs)));
   }
 
   public static RxHttpJsonArrayParam patchJsonArray(String url, Object... formatArgs) {
-    return with(Param.patchJsonArray(format(url, formatArgs)));
+    return new RxHttpJsonArrayParam(Param.patchJsonArray(format(url, formatArgs)));
   }
 
   public static RxHttpJsonArrayParam deleteJsonArray(String url, Object... formatArgs) {
-    return with(Param.deleteJsonArray(format(url, formatArgs)));
+    return new RxHttpJsonArrayParam(Param.deleteJsonArray(format(url, formatArgs)));
   }
 
-  public static RxHttpPostEncryptJsonParam postEncryptJson(@NotNull String url,
-      Object... formatArgs) {
+  public static RxHttpPostEncryptJsonParam postEncryptJson(String url, Object... formatArgs) {
     return new RxHttpPostEncryptJsonParam(new PostEncryptJsonParam(format(url, formatArgs)));
   }
 
@@ -262,36 +259,12 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
     return new RxHttpPostEncryptFormParam(new PostEncryptFormParam(format(url, formatArgs), method));
   }
 
-  public static RxHttpPostText postText(String url, Object... formatArgs) {
-    return new RxHttpPostText(new PostText(format(url, formatArgs)));
-  }
-
   public static RxHttpGetEncryptParam getEncrypt(String url, Object... formatArgs) {
     return new RxHttpGetEncryptParam(new GetEncryptParam(format(url, formatArgs)));
   }
 
-  public static RxHttpPostBodyParam postBodyForm(String url, Object... formatArgs) {
-    return new RxHttpPostBodyParam(new PostBodyParam(format(url, formatArgs)));
-  }
-
   public static RxHttpPostEncryptJsonParam1 postEncryptJson1(String url, Object... formatArgs) {
     return new RxHttpPostEncryptJsonParam1(new PostEncryptJsonParam1(format(url, formatArgs)));
-  }
-
-  public static RxHttpNoBodyParam with(NoBodyParam noBodyParam) {
-    return new RxHttpNoBodyParam(noBodyParam);
-  }
-
-  public static RxHttpFormParam with(FormParam formParam) {
-    return new RxHttpFormParam(formParam);
-  }
-
-  public static RxHttpJsonParam with(JsonParam jsonParam) {
-    return new RxHttpJsonParam(jsonParam);
-  }
-
-  public static RxHttpJsonArrayParam with(JsonArrayParam jsonArrayParam) {
-    return new RxHttpJsonArrayParam(jsonArrayParam);
   }
 
   public R setUrl(String url) {
@@ -299,20 +272,53 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
     return (R)this;
   }
 
-  public R add(String key, Object value) {
-    param.add(key,value);
+  public R removeAllQuery() {
+    param.removeAllQuery();
     return (R)this;
   }
 
-  public R add(String key, Object value, boolean isAdd) {
-    if(isAdd) {
-      param.add(key,value);
-    }
+  public R removeAllQuery(String key) {
+    param.removeAllQuery(key);
     return (R)this;
   }
 
-  public R addAll(Map<String, ?> map) {
-    param.addAll(map);
+  public R addQuery(String key, Object value) {
+    param.addQuery(key,value);
+    return (R)this;
+  }
+
+  public R setQuery(String key, Object value) {
+    param.setQuery(key,value);
+    return (R)this;
+  }
+
+  public R addEncodedQuery(String key, Object value) {
+    param.addEncodedQuery(key,value);
+    return (R)this;
+  }
+
+  public R setEncodedQuery(String key, Object value) {
+    param.setEncodedQuery(key,value);
+    return (R)this;
+  }
+
+  public R addAllQuery(Map<String, ?> map) {
+    param.addAllQuery(map);
+    return (R)this;
+  }
+
+  public R setAllQuery(Map<String, ?> map) {
+    param.setAllQuery(map);
+    return (R)this;
+  }
+
+  public R addAllEncodedQuery(Map<String, ?> map) {
+    param.addAllEncodedQuery(map);
+    return (R)this;
+  }
+
+  public R setAllEncodedQuery(Map<String, ?> map) {
+    param.setAllEncodedQuery(map);
     return (R)this;
   }
 
@@ -325,6 +331,22 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
     if(isAdd) {
       param.addHeader(line);
     }
+    return (R)this;
+  }
+
+  /**
+   * Add a header with the specified name and value. Does validation of header names, allowing non-ASCII values.
+   */
+  public R addNonAsciiHeader(String key, String value) {
+    param.addNonAsciiHeader(key,value);
+    return (R)this;
+  }
+
+  /**
+   * Set a header with the specified name and value. Does validation of header names, allowing non-ASCII values.
+   */
+  public R setNonAsciiHeader(String key, String value) {
+    param.setNonAsciiHeader(key,value);
     return (R)this;
   }
 
@@ -352,6 +374,11 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
 
   public R setHeader(String key, String value) {
     param.setHeader(key,value);
+    return (R)this;
+  }
+
+  public R setAllHeader(Map<String, String> headers) {
+    param.setAllHeader(headers);
     return (R)this;
   }
 
@@ -578,11 +605,15 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
     return (R)this;
   }
 
-  public R setSimpleClient() {
-    if (RxHttpManager.simpleClient == null)
-        throw new IllegalArgumentException("OkHttpClient can not be null");;
-    this.okClient = RxHttpManager.simpleClient;
+  public R setOkClient(@NotNull OkHttpClient okClient) {
+    if (okClient == null) 
+        throw new IllegalArgumentException("okClient can not be null");
+    this.okClient = okClient;
     return (R)this;
+  }
+
+  public R setSimpleClient() {
+    return setOkClient(RxHttpManager.simpleClient);
   }
 
   /**

@@ -2,7 +2,6 @@ package rxhttp.wrapper.param;
 
 import java.lang.Object;
 import java.lang.String;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * 本类由@Converter、@Domain、@OkClient注解中的className字段生成  类命名方式: Rx + {className字段值} + Http
@@ -105,8 +104,7 @@ public class RxSimpleHttp {
     return rxHttp;
   }
 
-  public static RxHttpPostEncryptJsonParam postEncryptJson(@NotNull String url,
-      Object... formatArgs) {
+  public static RxHttpPostEncryptJsonParam postEncryptJson(String url, Object... formatArgs) {
     RxHttpPostEncryptJsonParam rxHttp = RxHttp.postEncryptJson(url, formatArgs);
     wrapper(rxHttp);
     return rxHttp;
@@ -125,20 +123,8 @@ public class RxSimpleHttp {
     return rxHttp;
   }
 
-  public static RxHttpPostText postText(String url, Object... formatArgs) {
-    RxHttpPostText rxHttp = RxHttp.postText(url, formatArgs);
-    wrapper(rxHttp);
-    return rxHttp;
-  }
-
   public static RxHttpGetEncryptParam getEncrypt(String url, Object... formatArgs) {
     RxHttpGetEncryptParam rxHttp = RxHttp.getEncrypt(url, formatArgs);
-    wrapper(rxHttp);
-    return rxHttp;
-  }
-
-  public static RxHttpPostBodyParam postBodyForm(String url, Object... formatArgs) {
-    RxHttpPostBodyParam rxHttp = RxHttp.postBodyForm(url, formatArgs);
     wrapper(rxHttp);
     return rxHttp;
   }

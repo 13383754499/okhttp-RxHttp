@@ -1,16 +1,23 @@
 package rxhttp.wrapper.param;
 
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import okhttp3.HttpUrl;
 import okhttp3.HttpUrl.Builder;
 import okhttp3.RequestBody;
-import rxhttp.wrapper.annotations.NonNull;
 import rxhttp.wrapper.annotations.Nullable;
+import rxhttp.wrapper.entity.KeyValuePair;
+import rxhttp.wrapper.utils.BuildUtil;
 import rxhttp.wrapper.utils.CacheUtil;
 import rxhttp.wrapper.utils.GsonUtil;
+import rxhttp.wrapper.utils.JsonUtil;
 
 /**
  * post、put、patch、delete请求，参数以{application/json; charset=utf-8}形式提交
@@ -18,9 +25,9 @@ import rxhttp.wrapper.utils.GsonUtil;
  * Date: 2019-09-09
  * Time: 21:08
  */
-public class JsonParam extends BodyParam<JsonParam> implements IJsonObject<JsonParam> {
+public class JsonParam extends AbstractBodyParam<JsonParam> {
 
-    private Map<String, Object> mParam; //请求参数
+    private Map<String, Object> bodyParam; //请求参数
 
     /**
      * @param url    request url
@@ -32,43 +39,71 @@ public class JsonParam extends BodyParam<JsonParam> implements IJsonObject<JsonP
 
     @Override
     public RequestBody getRequestBody() {
-        final Map<String, Object> params = mParam;
-        if (params == null)
+        final Map<String, Object> bodyParam = this.bodyParam;
+        if (bodyParam == null)
             return RequestBody.create(null, new byte[0]);
-        return convert(params);
+        return convert(bodyParam);
     }
 
     @Override
-    public JsonParam add(String key, @NonNull Object value) {
-        Map<String, Object> param = mParam;
-        if (param == null) {
-            param = mParam = new LinkedHashMap<>();
-        }
-        param.put(key, value);
+    public JsonParam add(String key, @Nullable Object value) {
+        initMap();
+        bodyParam.put(key, value);
         return this;
     }
 
-    @Nullable
-    public Map<String, Object> getParams() {
-        return mParam;
+    public JsonParam addAll(String jsonObject) {
+        return addAll(JsonParser.parseString(jsonObject).getAsJsonObject());
+    }
+
+    public JsonParam addAll(JsonObject jsonObject) {
+        return addAll(JsonUtil.toMap(jsonObject));
     }
 
     @Override
-    public String getCacheKey() {
-        String cacheKey = super.getCacheKey();
-        if (cacheKey != null) return cacheKey;
-        Map<?, ?> param = CacheUtil.excludeCacheKey(mParam);
+    public JsonParam addAll(Map<String, ?> map) {
+        initMap();
+        return super.addAll(map);
+    }
+
+    public JsonParam addJsonElement(String key, String jsonElement) {
+        JsonElement element = JsonParser.parseString(jsonElement);
+        return add(key, JsonUtil.toAny(element));
+    }
+
+    /**
+     * @return Map
+     * @deprecated please user {@link #getBodyParam()} instead
+     */
+    @Deprecated
+    @Nullable
+    public Map<String, Object> getParams() {
+        return getBodyParam();
+    }
+
+    public Map<String, Object> getBodyParam() {
+        return bodyParam;
+    }
+
+    @Override
+    public String buildCacheKey() {
+        List<KeyValuePair> queryPairs = CacheUtil.excludeCacheKey(getQueryParam());
+        HttpUrl httpUrl = BuildUtil.getHttpUrl(getSimpleUrl(), queryPairs);
+        Map<?, ?> param = CacheUtil.excludeCacheKey(bodyParam);
         String json = GsonUtil.toJson(param);
-        HttpUrl httpUrl = HttpUrl.get(getSimpleUrl());
         Builder builder = httpUrl.newBuilder().addQueryParameter("json", json);
         return builder.toString();
+    }
+
+    private void initMap() {
+        if (bodyParam == null) bodyParam = new LinkedHashMap<>();
     }
 
     @Override
     public String toString() {
         return "JsonParam{" +
-            "url=" + getUrl() +
-            "mParam=" + mParam +
+            "url = " + getUrl() +
+            "bodyParam = " + bodyParam +
             '}';
     }
 }

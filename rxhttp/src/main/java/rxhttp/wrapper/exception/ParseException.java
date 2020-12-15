@@ -17,30 +17,20 @@ import rxhttp.wrapper.utils.LogUtil;
  */
 public class ParseException extends IOException {
 
-    private String errorCode;
+    private final String errorCode;
 
-    private String requestMethod; //请求方法，Get/Post等
-    private String requestUrl; //请求Url及参数
-    private Headers responseHeaders; //响应头
-    private String requestResult; //请求结果
+    private final String requestMethod; //请求方法，Get/Post等
+    private final String requestUrl; //请求Url及参数
+    private final Headers responseHeaders; //响应头
 
     public ParseException(@NonNull String code, String message, Response response) {
-        this(code, message, response, null);
-    }
-
-    public ParseException(@NonNull String code, String message, Response response, String result) {
         super(message);
         errorCode = code;
-        requestResult = result;
 
         Request request = response.request();
         requestMethod = request.method();
         requestUrl = LogUtil.getEncodedUrlAndParams(request);
         responseHeaders = response.headers();
-    }
-
-    public String getRequestResult() {
-        return requestResult;
     }
 
     public String getErrorCode() {
@@ -68,10 +58,8 @@ public class ParseException extends IOException {
     @Override
     public String toString() {
         return getClass().getName() + ":" +
-            " Method=" + requestMethod +
-            " Code=" + errorCode +
-            "\n\n" + requestUrl +
-            "\n\n" + responseHeaders +
-            "\nmessage = " + getMessage();
+            "\n\n" + requestMethod + ": " + requestUrl +
+            "\n\nCode = " + errorCode + " message = " + getMessage() +
+            "\n\n" + responseHeaders;
     }
 }
