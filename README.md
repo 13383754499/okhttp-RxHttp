@@ -1,66 +1,33 @@
+# RxHttp
+
+English | [中文文档](https://github.com/liujingxing/okhttp-RxHttp/blob/master/README_zh.md)
+
 [ ![Download](https://api.bintray.com/packages/32774707/maven/rxhttp2/images/download.svg) ](https://bintray.com/32774707/maven/rxhttp2/_latestVersion)
 
-# RxHttp主要优势
-
-  ***1. 30秒即可上手，学习成本极低***
-
-  ***2. 史上最优雅的支持 Kotlin 协程***
-
-  ***3. 史上最优雅的处理多个BaseUrl及动态BaseUrl***
-
-  ***4. 史上最优雅的对错误统一处理，且不打破Lambda表达式***
-
-  ***5. 史上最优雅的文件上传/下载/断点下载/进度监听，已适配Android 10***
-
-  ***6. 支持Gson、Xml、ProtoBuf、FastJson等第三方数据解析工具***
-
-  ***7. 支持Get、Post、Put、Delete等任意请求方式，可自定义请求方式***
-
-  ***8. 支持在Activity/Fragment/View/ViewModel/任意类中，自动关闭请求***
-
-  ***9. 支持全局加解密、添加公共参数及头部、网络缓存，均支持对某个请求单独设置***
-
-# 请求三部曲
-
-![image](https://github.com/liujingxing/okhttp-RxHttp/blob/master/screen/rxhttp_sequence_chart.jpg)
-
-# 上手教程
-
-30秒上手教程：[30秒上手新一代Http请求神器RxHttp](https://juejin.im/post/5cfcbbcbe51d455a694f94df)
-
-协程文档：[RxHttp ，比Retrofit 更优雅的协程体验](https://juejin.im/post/5e77604fe51d4527066eb81a#heading-2)
-
-掘金详细文档：[RxHttp 让你眼前一亮的Http请求框架](https://juejin.im/post/5ded221a518825125d14a1d4)
-
-wiki详细文档：https://github.com/liujingxing/okhttp-RxHttp/wiki  (此文档会持续更新)
+A type-safe HTTP client for Android. Written based on OkHttp
 
 
-自动关闭请求用到的RxLife类，详情请查看[RxLife库](https://github.com/liujingxing/RxLife)
+## 1、Feature
 
-[更新日志](https://github.com/liujingxing/okhttp-RxHttp/wiki/%E6%9B%B4%E6%96%B0%E6%97%A5%E5%BF%97) &nbsp;&nbsp;&nbsp;&nbsp;
-[已知问题](https://github.com/liujingxing/okhttp-RxHttp/wiki/%E5%B7%B2%E7%9F%A5%E9%97%AE%E9%A2%98) &nbsp;&nbsp;&nbsp;&nbsp;
+- Support kotlin coroutines, RxJava2, RxJava3
 
-[遇到问题，点击这里，99%的问题都能自己解决](https://github.com/liujingxing/okhttp-RxHttp/wiki/FAQ)
+- Support Gson, Xml, ProtoBuf, FastJson and other third-party data parsing tools
 
+- Supports automatic closure of requests in FragmentActivity, Fragment, View, ViewModel, and any class
 
-# 上手准备
+- Support global encryption and decryption, add common parameters and headers, network cache, all support a request set up separately
 
-***RxHttp&RxLife 交流群：378530627***
+## 2、usage
 
-***[Maven依赖点击这里](https://github.com/liujingxing/okhttp-RxHttp/blob/master/maven_dependency.md)***
+1、Adding dependencies and configurations
 
-***1、RxHttp目前已适配`OkHttp 3.12.0 - 4.9.0`版本(4.3.0版本除外), 如你想要兼容21以下，请依赖`OkHttp 3.12.x`，该版本最低要求 API 9***
-
-***2、asXxx方法内部是通过RxJava实现的，而RxHttp 2.2.0版本起，内部已剔除RxJava，如需使用，请自行依赖RxJava并告知RxHttp依赖的Rxjava版本***
-
-
-## 必须
+### Required
 ```java
-//使用kapt依赖rxhttp-compiler时必须
+//Must be used when using kapt
 apply plugin: 'kotlin-kapt'
 
 android {
-    //必须，java 8或更高
+    //Java 8 or higher
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -68,85 +35,159 @@ android {
 }
 
 dependencies {
-    implementation 'com.ljx.rxhttp:rxhttp:2.5.1'
-    implementation 'com.squareup.okhttp3:okhttp:4.9.0' //rxhttp v2.2.2版本起，需要手动依赖okhttp
-    kapt 'com.ljx.rxhttp:rxhttp-compiler:2.5.1' //生成RxHttp类，纯Java项目，请使用annotationProcessor代替kapt
+    implementation 'com.ljx.rxhttp:rxhttp:2.5.3'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.0' 
+    kapt 'com.ljx.rxhttp:rxhttp-compiler:2.5.3' //Use the annotationProcessor instead of kapt, if you use Java
  }
 ```
 
-## 可选
+### Optional
 ```java
 android {
     defaultConfig {
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments = [
-                    //使用asXxx方法时必须，告知RxHttp你依赖的rxjava版本，可传入rxjava2、rxjava3
-                    rxhttp_rxjava: 'rxjava3'， 
-                    rxhttp_package: 'rxhttp'   //非必须，指定RxHttp类包名
+                    //Pass in RxJava version, can pass in RxJava2, RxJava3
+                    rxhttp_rxjava: 'rxjava3'，
+                    rxhttp_package: 'rxhttp'   //Specifies the RxHttp class package
                 ]
             }
         }
     }
 }
 dependencies {
-    implementation 'com.ljx.rxlife:rxlife-coroutine:2.0.1' //管理协程生命周期，页面销毁，关闭请求
-    
-    //rxjava2   (RxJava2/Rxjava3二选一，使用asXxx方法时必须)
+    implementation 'com.ljx.rxlife:rxlife-coroutine:2.0.1' //Coroutine, Automatic close request
+
+    //rxjava2   (RxJava2/Rxjava3 select one)
     implementation 'io.reactivex.rxjava2:rxjava:2.2.8'
     implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
-    implementation 'com.ljx.rxlife2:rxlife-rxjava:2.0.0' //管理RxJava2生命周期，页面销毁，关闭请求
+    implementation 'com.ljx.rxlife2:rxlife-rxjava:2.0.0' //RxJava2, Automatic close request
 
     //rxjava3
     implementation 'io.reactivex.rxjava3:rxjava:3.0.6'
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
-    implementation 'com.ljx.rxlife3:rxlife-rxjava:3.0.0' //管理RxJava3生命周期，页面销毁，关闭请求
+    implementation 'com.ljx.rxlife3:rxlife-rxjava:3.0.0' //RxJava3, Automatic close request
 
-    //非必须，根据自己需求选择 RxHttp默认内置了GsonConverter
-    implementation 'com.ljx.rxhttp:converter-fastjson:2.5.1'
-    implementation 'com.ljx.rxhttp:converter-jackson:2.5.1'
-    implementation 'com.ljx.rxhttp:converter-moshi:2.5.1'
-    implementation 'com.ljx.rxhttp:converter-protobuf:2.5.1'
-    implementation 'com.ljx.rxhttp:converter-simplexml:2.5.1'
+    implementation 'com.ljx.rxhttp:converter-fastjson:2.5.3'
+    implementation 'com.ljx.rxhttp:converter-jackson:2.5.3'
+    implementation 'com.ljx.rxhttp:converter-moshi:2.5.3'
+    implementation 'com.ljx.rxhttp:converter-protobuf:2.5.3'
+    implementation 'com.ljx.rxhttp:converter-simplexml:2.5.3'
 }
 ```
 
-最后，***rebuild一下(此步骤是必须的)*** ，就会自动生成RxHttp类
+**Finally, rebuild the project, which is necessary**
+
+2、Initialize the SDK
+
+This step is optional
+
+```java
+RxHttp.setDebug(boolean)  
+RxHttp.init(OkHttpClient)  
+```
+
+3、Configuration BaseUrl
+
+This step is optional
+
+```java
+public class Url {
+
+    //Add the @defaultDomain annotation to BASE_URL
+    @DefaultDomain
+    public static BASE_URL = "https://..."
+}
+```
+
+4、Perform the requested
+
+```java
+// java
+RxHttp.get("/service/...")   //1、You can choose get,postFrom,postJson etc
+    .addQuery("key", "value")               //add query param
+    .addHeader("headerKey", "headerValue")  //add request header
+    .asClass(Student.class)  //2、Use the asXxx method to determine the return value type, customizable
+    .subscribe(student -> {  //3、Subscribing observer
+        //Success callback，Default IO thread
+    }, throwable -> {
+        //Abnormal callback
+    });
+
+// kotlin 
+RxHttp.postForm("/service/...")          //post FormBody
+    .add("key", "value")                 //add param to body
+    .addQuery("key1", "value1")          //add query param
+    .addFile("file", File(".../1.png"))  //add file to body
+    .asClass<Student>()           
+    .subscribe({ student ->       
+        //Default IO thread
+    }, { throwable ->
+        
+    })
+
+// kotlin coroutine
+val students = RxHttp.postJson("/service/...")  //1、post {application/json; charset=utf-8}
+    .toList<Student>()                          //2、Use the toXxx method to determine the return value type, customizable
+    .await()                                    //3、Get the return value, await is the suspend method
+```
+
+See the request timing diagram for more
+
+![image](https://github.com/liujingxing/okhttp-RxHttp/blob/master/screen/sequence_chart_en.jpg)
+
+## 3、Advanced usage
+
+ 1、Close the request
+
+```java
+//In Rxjava2 , Automatic close request
+RxHttp.get("/service/...")
+    .asString()
+    .as(RxLife.as(this))  //The Activity destroys and automatically closes the request
+    .subscribe(s -> {
+        //Default IO thread
+    }, throwable -> {
+
+    });
+
+//In Rxjava3 , Automatic close request
+RxHttp.get("/service/...")
+    .asString()
+    .to(RxLife.to(this))  //The Activity destroys and automatically closes the request
+    .subscribe(s -> {
+        //Default IO thread
+    }, throwable -> {
+        
+    });
 
 
-# 混淆
+//In RxJava2/RxJava3, close the request manually
+Disposable disposable = RxHttp.get("/service/...")
+    .asString()
+    .subscribe(s -> {
+        //Default IO thread
+    }, throwable -> {
+        
+    });
 
-`RxHttp v2.2.8`版本起，无需添加任何混淆规则(内部自带混淆规则)，v2.2.8以下版本，请[查看混淆规则](https://github.com/liujingxing/okhttp-RxHttp/wiki/关于混淆),并添加到自己项目中
+disposable.dispose(); //Close the request at the appropriate time
+```
 
-# 友情链接
+## 4、ProGuard
 
-[开源阅读 3.0](https://github.com/gedoor/legado)
+If you are using RxHttp v2.2.8 or above the shrinking and obfuscation rules are included automatically.
+Otherwise you must manually add the options in [rxhttp.pro](https://github.com/liujingxing/okhttp-RxHttp/blob/master/rxhttp/src/main/resources/META-INF/proguard/rxhttp.pro).
 
-`注：如果你的项目用到了RxHttp，想要在这里展示，请联系我。`
+## 5、Donations
 
-# 小技巧
-
-在这教大家一个小技巧，由于使用RxHttp发送请求都遵循请求三部曲，故我们可以在android studio 设置代码模版,如下
-
-![image](https://github.com/liujingxing/RxHttp/blob/master/screen/templates.png)
-
-如图设置好后，写代码时，输入rp,就会自动生成模版，如下：
-
-![image](https://github.com/liujingxing/RxHttp/blob/master/screen/templates_demo.gif)
-
-
-# Demo演示
-<img src="https://github.com/liujingxing/RxHttp/blob/master/screen/screenrecorder-2019-11-27_22_56_26.gif" width = "240" height = "520" />
-
-> 更多功能，请下载Demo体验
-
-## Donations
-如果它对你帮助很大，并且你很想支持库的后续开发和维护，那么你可以扫下方二维码随意打赏我，就当是请我喝杯咖啡或是啤酒，开源不易，感激不尽
+If this project helps you a lot and you want to support the project's development and maintenance of this project, feel free to scan the following QR code for donation. Your donation is highly appreciated. Thank you!
 
 ![image](https://github.com/liujingxing/RxHttp/blob/master/screen/rxhttp_donate.png)
 
-
 # Licenses
+
 ```
 Copyright 2019 liujingxing
 
