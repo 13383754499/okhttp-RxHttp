@@ -111,13 +111,34 @@ public class RxHttpFormParam extends RxHttpAbstractBodyParam<FormParam, RxHttpFo
         return this;
     }
 
-    public RxHttpFormParam addFile(String key, List<? extends File> fileList) {
-        param.addFile(key, fileList);
-        return this;
+    /**
+     * @deprecated please user {@link #addFiles(List)} instead
+     */
+    @Deprecated
+    public RxHttpFormParam addFile(List<? extends UpFile> fileList) {
+        return addFiles(fileList);
+    }
+    
+    /**
+     * @deprecated please user {@link #addFiles(String, List)} instead
+     */
+    @Deprecated
+    public <T> RxHttpFormParam addFile(String key, List<T> fileList) {
+        return addFiles(key, fileList);
     }
 
-    public RxHttpFormParam addFile(List<? extends UpFile> fileList) {
-        param.addFile(fileList);
+    public RxHttpFormParam addFiles(List<? extends UpFile> fileList) {
+        param.addFiles(fileList);
+        return this;
+    }
+    
+    public <T> RxHttpFormParam addFiles(Map<String, T> fileMap) {
+        param.addFiles(fileMap);
+        return this;
+    }
+    
+    public <T> RxHttpFormParam addFiles(String key, List<T> fileList) {
+        param.addFiles(key, fileList);
         return this;
     }
 
@@ -221,8 +242,39 @@ public class RxHttpFormParam extends RxHttpAbstractBodyParam<FormParam, RxHttpFo
         return this;
     }
 
+    //Set content-type to multipart/form-data
     public RxHttpFormParam setMultiForm() {
         param.setMultiForm();
+        return this;
+    }
+    
+    //Set content-type to multipart/mixed
+    public RxHttpFormParam setMultiMixed() {
+        param.setMultiMixed();
+        return this;
+    }
+    
+    //Set content-type to multipart/alternative
+    public RxHttpFormParam setMultiAlternative() {
+        param.setMultiAlternative();
+        return this;
+    }
+    
+    //Set content-type to multipart/digest
+    public RxHttpFormParam setMultiDigest() {
+        param.setMultiDigest();
+        return this;
+    }
+    
+    //Set content-type to multipart/parallel
+    public RxHttpFormParam setMultiParallel() {
+        param.setMultiParallel();
+        return this;
+    }
+    
+    //Set the MIME type
+    public RxHttpFormParam setMultiType(MediaType multiType) {
+        param.setMultiType(multiType);
         return this;
     }
 }

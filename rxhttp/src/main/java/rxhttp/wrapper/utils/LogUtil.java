@@ -1,20 +1,23 @@
 package rxhttp.wrapper.utils;
 
-
 import java.io.EOFException;
 import java.io.IOException;
-import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.util.List;
 
 import kotlin.text.Charsets;
+import okhttp3.Cookie;
+import okhttp3.CookieJar;
 import okhttp3.Headers;
+import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
+import okhttp3.MultipartBody.Part;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import okhttp3.internal.http.HttpHeaders;
 import okio.Buffer;
 import okio.BufferedSource;
 import rxhttp.Platform;
@@ -64,16 +67,13 @@ public class LogUtil {
     }
 
     //打印Http请求连接失败异常日志
-    @SuppressWarnings("deprecation")
     public static void log(String url, Throwable throwable) {
         if (!isDebug) return;
         try {
             throwable.printStackTrace();
-            StringBuilder builder = new StringBuilder()
-                .append(throwable.toString());
+            StringBuilder builder = new StringBuilder(throwable.toString());
             if (!(throwable instanceof ParseException) && !(throwable instanceof HttpStatusCodeException)) {
-                builder.append("\n\n")
-                    .append(URLDecoder.decode(url));
+                builder.append("\n\n").append(url);
             }
             Platform.get().loge(TAG, builder.toString());
         } catch (Throwable e) {
@@ -81,25 +81,98 @@ public class LogUtil {
         }
     }
 
+    //请求前，打印日志
+    public static void log(@NonNull Request userRequest, CookieJar cookieJar) {
+        if (!isDebug) return;
+        try {
+            Request.Builder requestBuilder = userRequest.newBuilder();
+            StringBuilder builder = new StringBuilder("<------ ")
+                .append(RxHttpVersion.userAgent).append(" ")
+                .append(OkHttpCompat.getOkHttpUserAgent())
+                .append(" request start ------>\n")
+                .append(userRequest.method())
+                .append(" ").append(userRequest.url());
+            RequestBody body = userRequest.body();
+            if (body != null) {
+                MediaType contentType = body.contentType();
+                if (contentType != null) {
+                    requestBuilder.header("Content-Type", contentType.toString());
+                }
+                long contentLength = body.contentLength();
+                if (contentLength != -1L) {
+                    requestBuilder.header("Content-Length", String.valueOf(contentLength));
+                    requestBuilder.removeHeader("Transfer-Encoding");
+                } else {
+                    requestBuilder.header("Transfer-Encoding", "chunked");
+                    requestBuilder.removeHeader("Content-Length");
+                }
+            }
+
+            if (userRequest.header("Host") == null) {
+                requestBuilder.header("Host", hostHeader(userRequest.url()));
+            }
+
+            if (userRequest.header("Connection") == null) {
+                requestBuilder.header("Connection", "Keep-Alive");
+            }
+
+            // If we add an "Accept-Encoding: gzip" header field we're responsible for also decompressing
+            // the transfer stream.
+            if (userRequest.header("Accept-Encoding") == null
+                && userRequest.header("Range") == null) {
+                requestBuilder.header("Accept-Encoding", "gzip");
+            }
+            List<Cookie> cookies = cookieJar.loadForRequest(userRequest.url());
+            if (!cookies.isEmpty()) {
+                requestBuilder.header("Cookie", cookieHeader(cookies));
+            }
+            if (userRequest.header("User-Agent") == null) {
+                requestBuilder.header("User-Agent", OkHttpCompat.getOkHttpUserAgent());
+            }
+            builder.append("\n").append(requestBuilder.build().headers());
+            if (body != null) {
+                builder.append("\n");
+                if (bodyHasUnknownEncoding(userRequest.headers())) {
+                    builder.append("(binary ")
+                        .append(body.contentLength())
+                        .append("-byte encoded body omitted)");
+                } else {
+                    builder.append(requestBody2Str(body));
+                }
+            }
+            Platform.get().logd(TAG, builder.toString());
+        } catch (Throwable e) {
+            Platform.get().logd(TAG, "Request start log printing failed", e);
+        }
+    }
+
     //打印Http返回的正常结果
+    @SuppressWarnings("deprecation")
     public static void log(@NonNull Response response, String body) {
         if (!isDebug) return;
         try {
             Request request = response.request();
             LogTime logTime = request.tag(LogTime.class);
             long tookMs = logTime != null ? logTime.tookMs() : 0;
-            String result = body != null ? body :
-                getResult(OkHttpCompat.requireBody(response), OkHttpCompat.needDecodeResult(response));
-            StringBuilder builder = new StringBuilder()
-                .append("<------ ")
-                .append(RxHttpVersion.userAgent + " ")
+            String result;
+            if (body != null) {
+                result = body;
+            } else if (!HttpHeaders.hasBody(response)) {
+                result = "No Response Body";
+            } else if (bodyHasUnknownEncoding(response.headers())) {
+                result = "(binary " + response.body().contentLength() + "-byte encoded body omitted)";
+            } else {
+                result = response2Str(response);
+            }
+            StringBuilder builder = new StringBuilder("<------ ")
+                .append(RxHttpVersion.userAgent).append(" ")
                 .append(OkHttpCompat.getOkHttpUserAgent())
-                .append(" request end ------>")
-                .append("\n\n").append(request.method()).append(": ").append(getEncodedUrlAndParams(request))
+                .append(" request end ------>\n")
+                .append(request.method()).append(" ").append(request.url())
                 .append("\n\n").append(response.protocol()).append(" ")
                 .append(response.code()).append(" ").append(response.message())
                 .append(tookMs > 0 ? " " + tookMs + "ms" : "")
-                .append("\n\n").append(response.headers())
+                .append("\n").append(response.headers())
                 .append("\n").append(result);
             Platform.get().logi(TAG, builder.toString());
         } catch (Throwable e) {
@@ -107,137 +180,91 @@ public class LogUtil {
         }
     }
 
-    //请求前，打印日志
-    public static void log(@NonNull Request request) {
-        if (!isDebug) return;
-        try {
-            String builder = "<------ " + RxHttpVersion.userAgent + " " + OkHttpCompat.getOkHttpUserAgent() +
-                " request start ------>" + request2Str(request);
-            Platform.get().logd(TAG, builder);
-        } catch (Throwable e) {
-            Platform.get().logd(TAG, "Request start log printing failed", e);
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    public static String getEncodedUrlAndParams(Request request) {
-        String result;
-        try {
-            result = getRequestParams(request);
-        } catch (Throwable e) {
-            e.printStackTrace();
-            result = request.url().toString();
-        }
-        try {
-            return URLDecoder.decode(result);
-        } catch (Throwable e) {
-            return result;
-        }
-    }
-
-    private static String request2Str(Request request) {
-        StringBuilder builder = new StringBuilder();
-        builder.append("\n\n").append(request.method()).append(": ")
-            .append(getEncodedUrlAndParams(request));
-        RequestBody body = request.body();
-        if (body != null) {
-            builder.append("\n\nContent-Type: ").append(body.contentType());
-            try {
-                builder.append("\nContent-Length: ").append(body.contentLength());
-            } catch (IOException ignore) {
-            }
-        }
-        builder.append(body != null ? "\n" : "\n\n").append(request.headers());
-        return builder.toString();
-    }
-
-    private static String getRequestParams(Request request) throws IOException {
-        RequestBody body = request.body();
+    private static String requestBody2Str(@NonNull RequestBody body) throws IOException {
         if (body instanceof ProgressRequestBody) {
             body = ((ProgressRequestBody) body).getRequestBody();
         }
-        String url = request.url().toString();
         if (body instanceof MultipartBody) {
-            MultipartBody multipartBody = (MultipartBody) body;
-            List<MultipartBody.Part> parts = multipartBody.parts();
-            StringBuilder fileBuilder = new StringBuilder();
-            StringBuilder paramBuilder = new StringBuilder();
-            for (int i = 0, size = parts.size(); i < size; i++) {
-                MultipartBody.Part part = parts.get(i);
-                RequestBody requestBody = part.body();
-                Headers headers = part.headers();
-                if (headers == null || headers.size() == 0) continue;
-                String[] split = headers.value(0).split(";");
-                String name = null, fileName = null;
-                for (String s : split) {
-                    if (s.equals("form-data")) continue;
-                    String[] keyValue = s.split("=");
-                    if (keyValue.length < 2) continue;
-                    String value = keyValue[1].substring(1, keyValue[1].length() - 1);
-                    if (name == null) {
-                        name = value;
-                    } else {
-                        fileName = value;
-                        break;
-                    }
-                }
-                if (name == null) continue;
-                if (fileName != null) {
-                    if (fileBuilder.length() == 0) {
-                        fileBuilder.append("\n\n");
-                    } else {
-                        fileBuilder.append("&");
-                    }
-                    fileBuilder.append(name).append("=").append(fileName);
-                } else {
-                    long contentLength = requestBody.contentLength();
-                    String value = null;
-                    if (contentLength < 1024) {
-                        Buffer buffer = new Buffer();
-                        requestBody.writeTo(buffer);
-                        value = buffer.readUtf8();
-                    }
-                    if (paramBuilder.length() == 0) {
-                        paramBuilder.append("\n\n");
-                    } else {
-                        paramBuilder.append("&");
-                    }
-                    paramBuilder.append(name).append("=").append(value != null ? value :
-                        "(binary " + contentLength + "-byte body omitted)");
-                }
-            }
-            return url + paramBuilder.toString() + fileBuilder.toString();
+            return multipartBody2Str((MultipartBody) body);
         }
+        Buffer buffer = new Buffer();
+        body.writeTo(buffer);
+        if (!isProbablyUtf8(buffer)) {
+            return "(binary " + body.contentLength() + "-byte body omitted)";
+        } else {
+            return buffer.readString(getCharset(body));
+        }
+    }
 
-        if (body != null) {
-            Buffer buffer = new Buffer();
-            body.writeTo(buffer);
-            if (!isPlaintext(buffer)) {
-                return url + "\n\n(binary "
-                    + body.contentLength() + "-byte body omitted)";
-            } else {
-                return url + "\n\n" + buffer.readUtf8();
+    private static String multipartBody2Str(MultipartBody multipartBody) {
+        final byte[] colonSpace = {':', ' '};
+        final byte[] CRLF = {'\r', '\n'};
+        final byte[] dashDash = {'-', '-'};
+        Buffer sink = new Buffer();
+        for (Part part : multipartBody.parts()) {
+            Headers headers = part.headers();
+            RequestBody body = part.body();
+            sink.write(dashDash)
+                .writeUtf8(multipartBody.boundary())
+                .write(CRLF);
+            if (headers != null) {
+                for (int i = 0, size = headers.size(); i < size; i++) {
+                    sink.writeUtf8(headers.name(i))
+                        .write(colonSpace)
+                        .writeUtf8(headers.value(i))
+                        .write(CRLF);
+                }
             }
+            MediaType contentType = body.contentType();
+            if (contentType != null) {
+                sink.writeUtf8("Content-Type: ")
+                    .writeUtf8(contentType.toString())
+                    .write(CRLF);
+            }
+            long contentLength = -1;
+            try {
+                contentLength = body.contentLength();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            sink.writeUtf8("Content-Length: ")
+                .writeDecimalLong(contentLength)
+                .write(CRLF);
+
+            if (contentLength > 1024) {
+                sink.writeUtf8("(binary " + contentLength + "-byte body omitted)");
+            } else {
+                if (body instanceof MultipartBody) {
+                    sink.write(CRLF)
+                        .writeUtf8(multipartBody2Str((MultipartBody) body));
+                } else {
+                    try {
+                        body.writeTo(sink);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            if (contentLength > 0) sink.write(CRLF);
+            sink.write(CRLF);
         }
-        return url;
+        sink.write(dashDash)
+            .writeUtf8(multipartBody.boundary())
+            .write(dashDash);
+        return sink.readString(getCharset(multipartBody));
     }
 
     @SuppressWarnings("deprecation")
-    private static String getResult(ResponseBody body, boolean onResultDecoder) throws IOException {
+    private static String response2Str(Response response) throws IOException {
+        ResponseBody body = OkHttpCompat.requireBody(response);
+        boolean onResultDecoder = OkHttpCompat.needDecodeResult(response);
+
         BufferedSource source = body.source();
         source.request(Long.MAX_VALUE); // Buffer the entire body.
         Buffer buffer = source.buffer();
         String result;
-        if (isPlaintext(buffer)) {
-            Charset UTF_8 = null;
-            MediaType contentType = body.contentType();
-            if (contentType != null) {
-                UTF_8 = contentType.charset();
-            }
-            if (UTF_8 == null) {
-                UTF_8 = Charsets.UTF_8;
-            }
-            result = buffer.clone().readString(UTF_8);
+        if (isProbablyUtf8(buffer)) {
+            result = buffer.clone().readString(getCharset(body));
             if (onResultDecoder) {
                 result = RxHttpPlugins.onResultDecoder(result);
             }
@@ -247,8 +274,7 @@ public class LogUtil {
         return result;
     }
 
-
-    private static boolean isPlaintext(Buffer buffer) {
+    private static boolean isProbablyUtf8(Buffer buffer) {
         try {
             Buffer prefix = new Buffer();
             long byteCount = buffer.size() < 64 ? buffer.size() : 64;
@@ -266,5 +292,45 @@ public class LogUtil {
         } catch (EOFException e) {
             return false; // Truncated UTF-8 sequence.
         }
+    }
+
+    private static Charset getCharset(RequestBody requestBody) {
+        MediaType mediaType = requestBody.contentType();
+        return mediaType != null ? mediaType.charset(Charsets.UTF_8) : Charsets.UTF_8;
+    }
+
+    private static Charset getCharset(ResponseBody responseBody) {
+        MediaType mediaType = responseBody.contentType();
+        return mediaType != null ? mediaType.charset(Charsets.UTF_8) : Charsets.UTF_8;
+    }
+
+
+    private static String hostHeader(HttpUrl url) {
+        String host = url.host().contains(":")
+            ? "[" + url.host() + "]"
+            : url.host();
+        return host + ":" + url.port();
+    }
+
+    /**
+     * Returns a 'Cookie' HTTP request header with all cookies, like {@code a=b; c=d}.
+     */
+    private static String cookieHeader(List<Cookie> cookies) {
+        StringBuilder cookieHeader = new StringBuilder();
+        for (int i = 0, size = cookies.size(); i < size; i++) {
+            if (i > 0) {
+                cookieHeader.append("; ");
+            }
+            Cookie cookie = cookies.get(i);
+            cookieHeader.append(cookie.name()).append('=').append(cookie.value());
+        }
+        return cookieHeader.toString();
+    }
+
+    private static boolean bodyHasUnknownEncoding(Headers headers) {
+        String contentEncoding = headers.get("Content-Encoding");
+        return contentEncoding != null
+            && !contentEncoding.equalsIgnoreCase("identity")
+            && !contentEncoding.equalsIgnoreCase("gzip");
     }
 }

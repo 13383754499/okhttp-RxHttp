@@ -39,7 +39,7 @@ public class BuildUtil {
      * @param map map参数集合
      * @return RequestBody
      */
-    public static RequestBody buildFormRequestBody(List<KeyValuePair> map) {
+    public static RequestBody buildFormBody(List<KeyValuePair> map) {
         FormBody.Builder builder = new FormBody.Builder();
         if (map != null) {
             for (KeyValuePair entry : map) {
@@ -48,7 +48,6 @@ public class BuildUtil {
                 } else {
                     builder.add(entry.getKey(), entry.getValue().toString());
                 }
-
             }
         }
         return builder.build();
@@ -57,13 +56,14 @@ public class BuildUtil {
     /**
      * 构建一个表单(带文件)
      *
+     * @param multiType     MediaType
      * @param keyValuePairs map参数集合
      * @param partList      文件列表
      * @return RequestBody
      */
-    public static RequestBody buildFormRequestBody(List<KeyValuePair> keyValuePairs, List<Part> partList) {
+    public static RequestBody buildMultipartBody(MediaType multiType, List<KeyValuePair> keyValuePairs, List<Part> partList) {
         MultipartBody.Builder builder = new MultipartBody.Builder();
-        builder.setType(MultipartBody.FORM);
+        builder.setType(multiType);
         if (keyValuePairs != null) {
             //遍历参数
             for (KeyValuePair entry : keyValuePairs) {
@@ -97,9 +97,6 @@ public class BuildUtil {
         int index = filename.lastIndexOf(".") + 1;
         String fileSuffix = filename.substring(index);
         String contentType = URLConnection.guessContentTypeFromName(fileSuffix);
-        if (contentType == null || contentType.isEmpty()) {
-            contentType = "application/octet-stream";
-        }
-        return MediaType.parse(contentType);
+        return contentType != null ? MediaType.parse(contentType) : null;
     }
 }

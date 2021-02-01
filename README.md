@@ -1,5 +1,7 @@
 # RxHttp
 
+本人正在参与[掘金2020年度人气创作者榜单排名](https://rank.juejin.cn/?u=%E4%B8%8D%E6%80%95%E5%A4%A9%E9%BB%91&t=user)，希望各位小伙伴帮我投票，2021年会给大家带来更多优质的文章。
+
 English | [中文文档](https://github.com/liujingxing/okhttp-RxHttp/blob/master/README_zh.md)
 
 [ ![Download](https://api.bintray.com/packages/32774707/maven/rxhttp2/images/download.svg) ](https://bintray.com/32774707/maven/rxhttp2/_latestVersion)
@@ -35,9 +37,9 @@ android {
 }
 
 dependencies {
-    implementation 'com.ljx.rxhttp:rxhttp:2.5.3'
+    implementation 'com.ljx.rxhttp:rxhttp:2.5.4'
     implementation 'com.squareup.okhttp3:okhttp:4.9.0' 
-    kapt 'com.ljx.rxhttp:rxhttp-compiler:2.5.3' //Use the annotationProcessor instead of kapt, if you use Java
+    kapt 'com.ljx.rxhttp:rxhttp-compiler:2.5.4' //Use the annotationProcessor instead of kapt, if you use Java
  }
 ```
 
@@ -69,11 +71,11 @@ dependencies {
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
     implementation 'com.ljx.rxlife3:rxlife-rxjava:3.0.0' //RxJava3, Automatic close request
 
-    implementation 'com.ljx.rxhttp:converter-fastjson:2.5.3'
-    implementation 'com.ljx.rxhttp:converter-jackson:2.5.3'
-    implementation 'com.ljx.rxhttp:converter-moshi:2.5.3'
-    implementation 'com.ljx.rxhttp:converter-protobuf:2.5.3'
-    implementation 'com.ljx.rxhttp:converter-simplexml:2.5.3'
+    implementation 'com.ljx.rxhttp:converter-fastjson:2.5.4'
+    implementation 'com.ljx.rxhttp:converter-jackson:2.5.4'
+    implementation 'com.ljx.rxhttp:converter-moshi:2.5.4'
+    implementation 'com.ljx.rxhttp:converter-protobuf:2.5.4'
+    implementation 'com.ljx.rxhttp:converter-simplexml:2.5.4'
 }
 ```
 
