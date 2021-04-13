@@ -9,14 +9,14 @@
     <dependency>
         <groupId>com.squareup.okhttp3</groupId>
         <artifactId>okhttp</artifactId>
-        <version>4.8.1</version>
+        <version>4.9.1</version>
     </dependency>
 
     <!--必须-->
     <dependency>
         <groupId>com.ljx.rxhttp</groupId>
         <artifactId>rxhttp</artifactId>
-        <version>2.5.5</version>
+        <version>2.5.7</version>
     </dependency>
 
     <!-- 非必须 RxJava2/RxJava3 二选一或都不选 -->
@@ -48,7 +48,7 @@
                     <path>
                         <groupId>com.ljx.rxhttp</groupId>
                         <artifactId>rxhttp-compiler</artifactId>
-                        <version>2.5.5</version>
+                        <version>2.5.7</version>
                     </path>
                 </annotationProcessorPaths>
 

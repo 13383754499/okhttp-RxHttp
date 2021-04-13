@@ -51,7 +51,7 @@ wiki详细文档：https://github.com/liujingxing/okhttp-RxHttp/wiki  (此文档
 
 ***[Maven依赖点击这里](https://github.com/liujingxing/okhttp-RxHttp/blob/master/maven_dependency.md)***
 
-***1、RxHttp目前已适配`OkHttp 3.12.0 - 4.9.0`版本(4.3.0版本除外), 如你想要兼容21以下，请依赖`OkHttp 3.12.x`，该版本最低要求 API 9***
+***1、RxHttp目前已适配`OkHttp 3.12.0 - 4.9.1`版本(4.3.0版本除外), 如你想要兼容21以下，请依赖`OkHttp 3.12.x`，该版本最低要求 API 9***
 
 ***2、asXxx方法内部是通过RxJava实现的，而RxHttp 2.2.0版本起，内部已剔除RxJava，如需使用，请自行依赖RxJava并告知RxHttp依赖的Rxjava版本***
 
@@ -70,9 +70,9 @@ android {
 }
 
 dependencies {
-    implementation 'com.ljx.rxhttp:rxhttp:2.5.5'
-    implementation 'com.squareup.okhttp3:okhttp:4.9.0' //rxhttp v2.2.2版本起，需要手动依赖okhttp
-    kapt 'com.ljx.rxhttp:rxhttp-compiler:2.5.5' //生成RxHttp类，纯Java项目，请使用annotationProcessor代替kapt
+    implementation 'com.ljx.rxhttp:rxhttp:2.5.7'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.1' //rxhttp v2.2.2版本起，需要手动依赖okhttp
+    kapt 'com.ljx.rxhttp:rxhttp-compiler:2.5.7' //生成RxHttp类，纯Java项目，请使用annotationProcessor代替kapt
  }
 ```
 
@@ -105,11 +105,11 @@ dependencies {
     implementation 'com.ljx.rxlife3:rxlife-rxjava:3.0.0' //管理RxJava3生命周期，页面销毁，关闭请求
 
     //非必须，根据自己需求选择 RxHttp默认内置了GsonConverter
-    implementation 'com.ljx.rxhttp:converter-fastjson:2.5.5'
-    implementation 'com.ljx.rxhttp:converter-jackson:2.5.5'
-    implementation 'com.ljx.rxhttp:converter-moshi:2.5.5'
-    implementation 'com.ljx.rxhttp:converter-protobuf:2.5.5'
-    implementation 'com.ljx.rxhttp:converter-simplexml:2.5.5'
+    implementation 'com.ljx.rxhttp:converter-fastjson:2.5.7'
+    implementation 'com.ljx.rxhttp:converter-jackson:2.5.7'
+    implementation 'com.ljx.rxhttp:converter-moshi:2.5.7'
+    implementation 'com.ljx.rxhttp:converter-protobuf:2.5.7'
+    implementation 'com.ljx.rxhttp:converter-simplexml:2.5.7'
 }
 ```
 
