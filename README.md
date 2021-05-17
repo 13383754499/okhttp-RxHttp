@@ -2,7 +2,7 @@
 
 English | [中文文档](https://github.com/liujingxing/okhttp-RxHttp/blob/master/README_zh.md)
 
-[ ![Download](https://api.bintray.com/packages/32774707/maven/rxhttp2/images/download.svg) ](https://bintray.com/32774707/maven/rxhttp2/_latestVersion)
+[![](https://jitpack.io/v/liujingxing/rxhttp.svg)](https://jitpack.io/#liujingxing/rxhttp)
 
 A type-safe HTTP client for Android. Written based on OkHttp
 
@@ -22,6 +22,17 @@ A type-safe HTTP client for Android. Written based on OkHttp
 1、Adding dependencies and configurations
 
 ### Required
+
+Add it to your build.gradle with:
+```java
+allprojects {
+    repositories {
+        maven { url "https://jitpack.io" }
+    }
+}
+```
+and:
+
 ```java
 //Must be used when using kapt
 apply plugin: 'kotlin-kapt'
@@ -35,9 +46,9 @@ android {
 }
 
 dependencies {
-    implementation 'com.ljx.rxhttp:rxhttp:2.5.7'
+    implementation 'com.github.liujingxing.rxhttp:rxhttp:2.6.0'
     implementation 'com.squareup.okhttp3:okhttp:4.9.1' 
-    kapt 'com.ljx.rxhttp:rxhttp-compiler:2.5.7' //Use the annotationProcessor instead of kapt, if you use Java
+    kapt 'com.github.liujingxing.rxhttp:rxhttp-compiler:2.6.0' //Use the annotationProcessor instead of kapt, if you use Java
  }
 ```
 
@@ -49,7 +60,7 @@ android {
             annotationProcessorOptions {
                 arguments = [
                     //Pass in RxJava version, can pass in RxJava2, RxJava3
-                    rxhttp_rxjava: 'rxjava3'，
+                    rxhttp_rxjava: 'rxjava3',
                     rxhttp_package: 'rxhttp'   //Specifies the RxHttp class package
                 ]
             }
@@ -57,23 +68,23 @@ android {
     }
 }
 dependencies {
-    implementation 'com.ljx.rxlife:rxlife-coroutine:2.0.1' //Coroutine, Automatic close request
+    implementation 'com.github.liujingxing.rxlife:rxlife-coroutine:2.1.0' //Coroutine, Automatic close request
 
     //rxjava2   (RxJava2/Rxjava3 select one)
     implementation 'io.reactivex.rxjava2:rxjava:2.2.8'
     implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
-    implementation 'com.ljx.rxlife2:rxlife-rxjava:2.0.0' //RxJava2, Automatic close request
+    implementation 'com.github.liujingxing.rxlife:rxlife-rxjava2:2.1.0' //RxJava2, Automatic close request
 
     //rxjava3
     implementation 'io.reactivex.rxjava3:rxjava:3.0.6'
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
-    implementation 'com.ljx.rxlife3:rxlife-rxjava:3.0.0' //RxJava3, Automatic close request
+    implementation 'com.github.liujingxing.rxlife:rxlife-rxjava3:2.1.0' //RxJava3, Automatic close request
 
-    implementation 'com.ljx.rxhttp:converter-fastjson:2.5.7'
-    implementation 'com.ljx.rxhttp:converter-jackson:2.5.7'
-    implementation 'com.ljx.rxhttp:converter-moshi:2.5.7'
-    implementation 'com.ljx.rxhttp:converter-protobuf:2.5.7'
-    implementation 'com.ljx.rxhttp:converter-simplexml:2.5.7'
+    implementation 'com.github.liujingxing.rxhttp:converter-fastjson:2.6.0'
+    implementation 'com.github.liujingxing.rxhttp:converter-jackson:2.6.0'
+    implementation 'com.github.liujingxing.rxhttp:converter-moshi:2.6.0'
+    implementation 'com.github.liujingxing.rxhttp:converter-protobuf:2.6.0'
+    implementation 'com.github.liujingxing.rxhttp:converter-simplexml:2.6.0'
 }
 ```
 
@@ -84,8 +95,10 @@ dependencies {
 This step is optional
 
 ```java
-RxHttp.setDebug(boolean)  
-RxHttp.init(OkHttpClient)  
+RxHttpPlugins.init(OkHttpClient)  
+    .setDebug(boolean)  
+    .setOnParamAssembly(Function)
+    ....
 ```
 
 3、Configuration BaseUrl
@@ -135,7 +148,7 @@ val students = RxHttp.postJson("/service/...")  //1、post {application/json; ch
 
 See the request timing diagram for more
 
-![image](https://github.com/liujingxing/okhttp-RxHttp/blob/master/screen/sequence_chart_en.jpg)
+![sequence_chart_en.jpg](https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/5c25c03999c4458d8cc79212cdfd34d5~tplv-k3u1fbpfcp-watermark.image)
 
 ## 3、Advanced usage
 
@@ -184,7 +197,7 @@ Otherwise you must manually add the options in [rxhttp.pro](https://github.com/l
 
 If this project helps you a lot and you want to support the project's development and maintenance of this project, feel free to scan the following QR code for donation. Your donation is highly appreciated. Thank you!
 
-![image](https://github.com/liujingxing/RxHttp/blob/master/screen/rxhttp_donate.png)
+![rxhttp_donate.png](https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/aafa7d05cfda4b2ea2a092bba8ebc1a0~tplv-k3u1fbpfcp-watermark.image)
 
 # Licenses
 

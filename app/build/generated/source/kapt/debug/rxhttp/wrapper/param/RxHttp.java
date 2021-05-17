@@ -10,7 +10,6 @@ import com.example.httpsender.param.PostEncryptJsonParam1;
 import com.example.httpsender.parser.ResponseParser;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Scheduler;
-import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.functions.Consumer;
 import java.io.IOException;
 import java.lang.Class;
@@ -30,11 +29,9 @@ import okhttp3.Headers.Builder;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import rxhttp.HttpSender;
 import rxhttp.RxHttpPlugins;
 import rxhttp.wrapper.cahce.CacheMode;
 import rxhttp.wrapper.cahce.CacheStrategy;
-import rxhttp.wrapper.callback.Function;
 import rxhttp.wrapper.callback.IConverter;
 import rxhttp.wrapper.entity.DownloadOffSize;
 import rxhttp.wrapper.entity.ParameterizedTypeImpl;
@@ -54,8 +51,6 @@ import rxhttp.wrapper.utils.LogUtil;
  */
 @SuppressWarnings("unchecked")
 public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
-  protected P param;
-
   private int connectTimeoutMillis;
 
   private int readTimeoutMillis;
@@ -64,11 +59,13 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
 
   private OkHttpClient realOkClient;
 
-  private OkHttpClient okClient = HttpSender.getOkHttpClient();
+  private OkHttpClient okClient = RxHttpPlugins.getOkHttpClient();
+
+  protected IConverter converter = RxHttpPlugins.getConverter();
 
   protected boolean isAsync = true;
 
-  protected IConverter converter = RxHttpPlugins.getConverter();
+  protected P param;
 
   public Request request;
 
@@ -76,48 +73,13 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
     this.param = param;
   }
 
-  public static void setDebug(boolean debug) {
-    setDebug(debug, false);
+  public P getParam() {
+    return param;
   }
 
-  public static void setDebug(boolean debug, boolean segmentPrint) {
-    LogUtil.setDebug(debug, segmentPrint);
-  }
-
-  public static void init(OkHttpClient okHttpClient) {
-    HttpSender.init(okHttpClient);
-  }
-
-  public static void init(OkHttpClient okHttpClient, boolean debug) {
-    HttpSender.init(okHttpClient,debug);
-  }
-
-  public static boolean isInit() {
-    return HttpSender.isInit();
-  }
-
-  /**
-   * 设置统一数据解码/解密器，每次请求成功后会回调该接口并传入Http请求的结果
-   * 通过该接口，可以统一对数据解密，并将解密后的数据返回即可
-   * 若部分接口不需要回调该接口，发请求前，调用{@link #setDecoderEnabled(boolean)}方法设置false即可
-   */
-  public static void setResultDecoder(Function<String, String> decoder) {
-    RxHttpPlugins.setResultDecoder(decoder);
-  }
-
-  /**
-   * 设置默认的转换器
-   */
-  public static void setConverter(IConverter converter) {
-    RxHttpPlugins.setConverter(converter);
-  }
-
-  /**
-   * 设置统一公共参数回调接口,通过该接口,可添加公共参数/请求头，每次请求前会回调该接口
-   * 若部分接口不需要添加公共参数,发请求前，调用{@link #setAssemblyEnabled(boolean)}方法设置false即可
-   */
-  public static void setOnParamAssembly(Function<Param<?>, Param<?>> onParamAssembly) {
-    RxHttpPlugins.setOnParamAssembly(onParamAssembly);
+  public R setParam(P param) {
+    this.param = param;
+    return (R)this;
   }
 
   public R connectTimeout(int connectTimeout) {
@@ -141,7 +103,7 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
     OkHttpClient.Builder builder = null;
 
     if (connectTimeoutMillis != 0) {
-      if (builder == null) builder = okHttpClient.newBuilder();
+      builder = okHttpClient.newBuilder();
       builder.connectTimeout(connectTimeoutMillis, TimeUnit.MILLISECONDS);
     }
 
@@ -162,23 +124,6 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
                                                                             
     realOkClient = builder != null ? builder.build() : okHttpClient;
     return realOkClient;
-  }
-
-  public static void dispose(Disposable disposable) {
-    if (!isDisposed(disposable)) disposable.dispose();
-  }
-
-  public static boolean isDisposed(Disposable disposable) {
-    return disposable == null || disposable.isDisposed();
-  }
-
-  public P getParam() {
-    return param;
-  }
-
-  public R setParam(P param) {
-    this.param = param;
-    return (R)this;
   }
 
   /**
@@ -262,10 +207,6 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
     return new RxHttpJsonArrayParam(Param.deleteJsonArray(format(url, formatArgs)));
   }
 
-  public static RxHttpPostEncryptJsonParam postEncryptJson(String url, Object... formatArgs) {
-    return new RxHttpPostEncryptJsonParam(new PostEncryptJsonParam(format(url, formatArgs)));
-  }
-
   public static RxHttpPostEncryptFormParam postEncryptForm(String url, Object... formatArgs) {
     return new RxHttpPostEncryptFormParam(new PostEncryptFormParam(format(url, formatArgs)));
   }
@@ -281,6 +222,10 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
 
   public static RxHttpPostEncryptJsonParam1 postEncryptJson1(String url, Object... formatArgs) {
     return new RxHttpPostEncryptJsonParam1(new PostEncryptJsonParam1(format(url, formatArgs)));
+  }
+
+  public static RxHttpPostEncryptJsonParam postEncryptJson(String url, Object... formatArgs) {
+    return new RxHttpPostEncryptJsonParam(new PostEncryptJsonParam(format(url, formatArgs)));
   }
 
   public R setUrl(String url) {
@@ -435,7 +380,7 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
 
   /**
    * 设置单个接口是否需要添加公共参数,
-   * 即是否回调通过{@link #setOnParamAssembly(Function)}方法设置的接口,默认为true
+   * 即是否回调通过{@link RxHttpPlugins#setOnParamAssembly(Function)}方法设置的接口,默认为true
    */
   public R setAssemblyEnabled(boolean enabled) {
     param.setAssemblyEnabled(enabled);
@@ -444,7 +389,7 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
 
   /**
    * 设置单个接口是否需要对Http返回的数据进行解码/解密,
-   * 即是否回调通过{@link #setResultDecoder(Function)}方法设置的接口,默认为true
+   * 即是否回调通过{@link RxHttpPlugins#setResultDecoder(Function)}方法设置的接口,默认为true
    */
   public R setDecoderEnabled(boolean enabled) {
     param.addHeader(Param.DATA_DECRYPT,String.valueOf(enabled));
@@ -524,11 +469,11 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
 
   public <T> List<T> executeList(Class<T> type) throws IOException {
     Type tTypeList = ParameterizedTypeImpl.get(List.class, type);
-    return execute(new SimpleParser<List<T>>(tTypeList));
+    return execute(new SimpleParser<>(tTypeList));
   }
 
   public <T> T executeClass(Class<T> type) throws IOException {
-    return execute(new SimpleParser<T>(type));
+    return execute(new SimpleParser<>(type));
   }
 
   @Override
@@ -590,17 +535,17 @@ public class RxHttp<P extends Param, R extends RxHttp> extends BaseRxHttp {
   }
 
   public <T> Observable<T> asResponse(Class<T> type) {
-    return asParser(new ResponseParser<T>(type));
+    return asParser(new ResponseParser<>(type));
   }
 
   public <T> Observable<List<T>> asResponseList(Class<T> type) {
     Type typeList = ParameterizedTypeImpl.get(List.class, type);
-    return asParser(new ResponseParser<List<T>>(typeList));
+    return asParser(new ResponseParser<>(typeList));
   }
 
   public <T> Observable<PageList<T>> asResponsePageList(Class<T> type) {
     Type typePageList = ParameterizedTypeImpl.get(PageList.class, type);
-    return asParser(new ResponseParser<PageList<T>>(typePageList));
+    return asParser(new ResponseParser<>(typePageList));
   }
 
   public R setXmlConverter() {

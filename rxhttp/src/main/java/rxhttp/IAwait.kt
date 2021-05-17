@@ -27,7 +27,7 @@ inline fun <T, R> IAwait<T>.newAwait(
 /**
  * @param times  retry times, default Int.MAX_VALUE Always try again
  * @param period retry period, default 0, time in milliseconds
- * @param test   Retry conditions, default null，Unconditional retry
+ * @param test   retry conditions, default null，Unconditional retry
  */
 fun <T> IAwait<T>.retry(
     times: Int = Int.MAX_VALUE,
@@ -366,20 +366,36 @@ suspend fun <T> IAwait<T>.async(
 
 suspend fun <T> IAwait<T>.awaitResult(): Result<T> = runCatching { await() }
 
-/**
- * Try to get the return value and return null when an error occurs.
- */
-suspend fun <T> Deferred<T>.tryAwait(): T? = tryAwait { await() }
+suspend fun <T> IAwait<T>.awaitResult(onSuccess: (value: T) -> Unit): Result<T> =
+    awaitResult().onSuccess(onSuccess)
+
+suspend fun <T> Deferred<T>.awaitResult(): Result<T> = runCatching { await() }
+
+suspend fun <T> Deferred<T>.awaitResult(onSuccess: (value: T) -> Unit): Result<T> =
+    awaitResult().onSuccess(onSuccess)
 
 /**
  * Try to get the return value and return null when an error occurs.
  */
-suspend fun <T> IAwait<T>.tryAwait(): T? = tryAwait { await() }
+suspend fun <T> Deferred<T>.tryAwait(
+    onError: ((exception: Throwable) -> Unit)? = null
+): T? = tryAwait(onError) { await() }
 
-private inline fun <T> tryAwait(block: () -> T): T? {
+/**
+ * Try to get the return value and return null when an error occurs.
+ */
+suspend fun <T> IAwait<T>.tryAwait(
+    onError: ((exception: Throwable) -> Unit)? = null
+): T? = tryAwait(onError) { await() }
+
+private inline fun <T> tryAwait(
+    noinline onError: ((exception: Throwable) -> Unit)? = null,
+    block: () -> T,
+): T? {
     return try {
         block()
     } catch (e: Throwable) {
+        onError?.invoke(e)
         null
     }
 }

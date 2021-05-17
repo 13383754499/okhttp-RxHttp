@@ -31,7 +31,8 @@ import rxhttp.wrapper.utils.LogUtil;
 import rxhttp.wrapper.utils.UriUtil;
 
 /**
- * 本类存放asXxx方法，如果依赖了RxJava的话
+ * 本类存放asXxx方法(需要单独依赖RxJava，并告知RxHttp依赖的RxJava版本)
+ * 如未生成，请查看 https://github.com/liujingxing/okhttp-RxHttp/wiki/FAQ
  * User: ljx
  * Date: 2020/4/11
  * Time: 18:15
@@ -98,12 +99,12 @@ public abstract class BaseRxHttp implements IRxHttp {
 
     public final <K, V> Observable<Map<K, V>> asMap(Class<K> kType, Class<V> vType) {
         Type tTypeMap = ParameterizedTypeImpl.getParameterized(Map.class, kType, vType);
-        return asParser(new SimpleParser<Map<K, V>>(tTypeMap));
+        return asParser(new SimpleParser<>(tTypeMap));
     }
 
     public final <T> Observable<List<T>> asList(Class<T> tType) {
         Type tTypeList = ParameterizedTypeImpl.get(List.class, tType);
-        return asParser(new SimpleParser<List<T>>(tTypeList));
+        return asParser(new SimpleParser<>(tTypeList));
     }
     
     public final <T> Observable<Bitmap> asBitmap() {
@@ -154,7 +155,7 @@ public abstract class BaseRxHttp implements IRxHttp {
                                                                                
     public final <T> Observable<T> asDownload(OutputStreamFactory<T> osFactory, Scheduler scheduler,
                                                Consumer<Progress> progressConsumer) {
-        return asParser(new StreamParser<T>(osFactory), scheduler, progressConsumer);
+        return asParser(new StreamParser<>(osFactory), scheduler, progressConsumer);
     }
     
     public final Observable<String> asAppendDownload(String destPath) {                    
@@ -181,9 +182,7 @@ public abstract class BaseRxHttp implements IRxHttp {
                 return StreamParser.get(context, uri);
             })
             .subscribeOn(Schedulers.io())
-            .flatMap(parser -> {
-                return asParser(parser, scheduler, progressConsumer);
-            });        
+            .flatMap(parser -> asParser(parser, scheduler, progressConsumer));        
     }                                                                                           
         
     public final Observable<Uri> asAppendDownload(UriFactory uriFactory) {                   
@@ -202,14 +201,12 @@ public abstract class BaseRxHttp implements IRxHttp {
                         setRangeHeader(length, -1, true);
                     parser = StreamParser.get(uriFactory.getContext(), uri);
                 } else {
-                    parser = new StreamParser(uriFactory);
+                    parser = new StreamParser<>(uriFactory);
                 }
                 return parser;
             })
             .subscribeOn(Schedulers.io())
-            .flatMap(parser -> {
-                return asParser(parser, scheduler, progressConsumer);
-            });
+            .flatMap(parser -> asParser(parser, scheduler, progressConsumer));
     }                                                                                            
         
 }

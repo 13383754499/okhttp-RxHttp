@@ -2,7 +2,9 @@
 
 [English](https://github.com/liujingxing/okhttp-RxHttp/blob/master/README.md) | 中文文档
 
-[ ![Download](https://api.bintray.com/packages/32774707/maven/rxhttp2/images/download.svg) ](https://bintray.com/32774707/maven/rxhttp2/_latestVersion)
+[![](https://jitpack.io/v/liujingxing/rxhttp.svg)](https://jitpack.io/#liujingxing/rxhttp) 
+
+***RxHttp&RxLife 交流群：378530627   &nbsp;&nbsp;&nbsp;&nbsp;  个人微信：ljx-studio*** 
 
 # 主要优势
 
@@ -26,7 +28,7 @@
 
 # 请求三部曲
 
-![image](https://github.com/liujingxing/okhttp-RxHttp/blob/master/screen/sequence_chart_zh.jpg)
+![](https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/0863323afac54cb9965aa0175d5c30b1~tplv-k3u1fbpfcp-watermark.image)
 
 # 上手教程
 
@@ -47,8 +49,6 @@ wiki详细文档：https://github.com/liujingxing/okhttp-RxHttp/wiki  (此文档
 
 # 上手准备
 
-***RxHttp&RxLife 交流群：378530627***
-
 ***[Maven依赖点击这里](https://github.com/liujingxing/okhttp-RxHttp/blob/master/maven_dependency.md)***
 
 ***1、RxHttp目前已适配`OkHttp 3.12.0 - 4.9.1`版本(4.3.0版本除外), 如你想要兼容21以下，请依赖`OkHttp 3.12.x`，该版本最低要求 API 9***
@@ -57,6 +57,17 @@ wiki详细文档：https://github.com/liujingxing/okhttp-RxHttp/wiki  (此文档
 
 
 ## 必须
+
+将`jitpack`添加到项目的`build.gradle`文件中，如下：
+```java
+allprojects {
+    repositories {
+        maven { url "https://jitpack.io" }
+    }
+}
+```
+`注：RxHttp 2.6.0版本起，已全面从JCenter迁移至jitpack`
+
 ```java
 //使用kapt依赖rxhttp-compiler时必须
 apply plugin: 'kotlin-kapt'
@@ -70,9 +81,9 @@ android {
 }
 
 dependencies {
-    implementation 'com.ljx.rxhttp:rxhttp:2.5.7'
+    implementation 'com.github.liujingxing.rxhttp:rxhttp:2.6.0'
     implementation 'com.squareup.okhttp3:okhttp:4.9.1' //rxhttp v2.2.2版本起，需要手动依赖okhttp
-    kapt 'com.ljx.rxhttp:rxhttp-compiler:2.5.7' //生成RxHttp类，纯Java项目，请使用annotationProcessor代替kapt
+    kapt 'com.github.liujingxing.rxhttp:rxhttp-compiler:2.6.0' //生成RxHttp类，纯Java项目，请使用annotationProcessor代替kapt
  }
 ```
 
@@ -84,7 +95,7 @@ android {
             annotationProcessorOptions {
                 arguments = [
                     //使用asXxx方法时必须，告知RxHttp你依赖的rxjava版本，可传入rxjava2、rxjava3
-                    rxhttp_rxjava: 'rxjava3'， 
+                    rxhttp_rxjava: 'rxjava3', 
                     rxhttp_package: 'rxhttp'   //非必须，指定RxHttp类包名
                 ]
             }
@@ -92,24 +103,24 @@ android {
     }
 }
 dependencies {
-    implementation 'com.ljx.rxlife:rxlife-coroutine:2.0.1' //管理协程生命周期，页面销毁，关闭请求
+    implementation 'com.github.liujingxing.rxlife:rxlife-coroutine:2.1.0' //管理协程生命周期，页面销毁，关闭请求
     
     //rxjava2   (RxJava2/Rxjava3二选一，使用asXxx方法时必须)
     implementation 'io.reactivex.rxjava2:rxjava:2.2.8'
     implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
-    implementation 'com.ljx.rxlife2:rxlife-rxjava:2.0.0' //管理RxJava2生命周期，页面销毁，关闭请求
+    implementation 'com.github.liujingxing.rxlife:rxlife-rxjava2:2.1.0' //管理RxJava2生命周期，页面销毁，关闭请求
 
     //rxjava3
     implementation 'io.reactivex.rxjava3:rxjava:3.0.6'
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
-    implementation 'com.ljx.rxlife3:rxlife-rxjava:3.0.0' //管理RxJava3生命周期，页面销毁，关闭请求
+    implementation 'com.github.liujingxing.rxlife:rxlife-rxjava3:2.1.0' //管理RxJava3生命周期，页面销毁，关闭请求
 
     //非必须，根据自己需求选择 RxHttp默认内置了GsonConverter
-    implementation 'com.ljx.rxhttp:converter-fastjson:2.5.7'
-    implementation 'com.ljx.rxhttp:converter-jackson:2.5.7'
-    implementation 'com.ljx.rxhttp:converter-moshi:2.5.7'
-    implementation 'com.ljx.rxhttp:converter-protobuf:2.5.7'
-    implementation 'com.ljx.rxhttp:converter-simplexml:2.5.7'
+    implementation 'com.github.liujingxing.rxhttp:converter-fastjson:2.6.0'
+    implementation 'com.github.liujingxing.rxhttp:converter-jackson:2.6.0'
+    implementation 'com.github.liujingxing.rxhttp:converter-moshi:2.6.0'
+    implementation 'com.github.liujingxing.rxhttp:converter-protobuf:2.6.0'
+    implementation 'com.github.liujingxing.rxhttp:converter-simplexml:2.6.0'
 }
 ```
 
@@ -134,7 +145,7 @@ dependencies {
 ## Donations
 如果它对你帮助很大，并且你很想支持库的后续开发和维护，那么你可以扫下方二维码随意打赏我，就当是请我喝杯咖啡或是啤酒，开源不易，感激不尽
 
-![image](https://github.com/liujingxing/RxHttp/blob/master/screen/rxhttp_donate.png)
+![rxhttp_donate.png](https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/aafa7d05cfda4b2ea2a092bba8ebc1a0~tplv-k3u1fbpfcp-watermark.image)
 
 
 # Licenses
