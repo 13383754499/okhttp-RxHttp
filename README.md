@@ -1,6 +1,6 @@
 # RxHttp
 
-English | [中文文档](https://github.com/liujingxing/okhttp-RxHttp/blob/master/README_zh.md)
+English | [中文文档](https://github.com/liujingxing/rxhttp/blob/master/README_zh.md)
 
 [![](https://jitpack.io/v/liujingxing/rxhttp.svg)](https://jitpack.io/#liujingxing/rxhttp)
 
@@ -46,9 +46,9 @@ android {
 }
 
 dependencies {
-    implementation 'com.github.liujingxing.rxhttp:rxhttp:2.6.0'
+    implementation 'com.github.liujingxing.rxhttp:rxhttp:2.6.1'
     implementation 'com.squareup.okhttp3:okhttp:4.9.1' 
-    kapt 'com.github.liujingxing.rxhttp:rxhttp-compiler:2.6.0' //Use the annotationProcessor instead of kapt, if you use Java
+    kapt 'com.github.liujingxing.rxhttp:rxhttp-compiler:2.6.1' //Use the annotationProcessor instead of kapt, if you use Java
  }
 ```
 
@@ -80,11 +80,11 @@ dependencies {
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
     implementation 'com.github.liujingxing.rxlife:rxlife-rxjava3:2.1.0' //RxJava3, Automatic close request
 
-    implementation 'com.github.liujingxing.rxhttp:converter-fastjson:2.6.0'
-    implementation 'com.github.liujingxing.rxhttp:converter-jackson:2.6.0'
-    implementation 'com.github.liujingxing.rxhttp:converter-moshi:2.6.0'
-    implementation 'com.github.liujingxing.rxhttp:converter-protobuf:2.6.0'
-    implementation 'com.github.liujingxing.rxhttp:converter-simplexml:2.6.0'
+    implementation 'com.github.liujingxing.rxhttp:converter-fastjson:2.6.1'
+    implementation 'com.github.liujingxing.rxhttp:converter-jackson:2.6.1'
+    implementation 'com.github.liujingxing.rxhttp:converter-moshi:2.6.1'
+    implementation 'com.github.liujingxing.rxhttp:converter-protobuf:2.6.1'
+    implementation 'com.github.liujingxing.rxhttp:converter-simplexml:2.6.1'
 }
 ```
 
@@ -191,7 +191,7 @@ disposable.dispose(); //Close the request at the appropriate time
 ## 4、ProGuard
 
 If you are using RxHttp v2.2.8 or above the shrinking and obfuscation rules are included automatically.
-Otherwise you must manually add the options in [rxhttp.pro](https://github.com/liujingxing/okhttp-RxHttp/blob/master/rxhttp/src/main/resources/META-INF/proguard/rxhttp.pro).
+Otherwise you must manually add the options in [rxhttp.pro](https://github.com/liujingxing/rxhttp/blob/master/rxhttp/src/main/resources/META-INF/proguard/rxhttp.pro).
 
 ## 5、Donations
 
