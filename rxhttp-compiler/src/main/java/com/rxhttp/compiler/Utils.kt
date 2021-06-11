@@ -8,49 +8,65 @@ import javax.lang.model.type.TypeVariable
 
 //将Java的基本类型/常用类型转换为kotlin中对应的类型
 fun TypeName.toKClassTypeName(): TypeName =
-    if (this is ParameterizedTypeName) {
-        when (rawType.toString()) {
-            else -> (rawType.toKClassTypeName() as ClassName).parameterizedBy(*typeArguments.map { it.toKClassTypeName() }.toTypedArray())
+    when {
+        this is ParameterizedTypeName -> { //带有具体泛型的类，如 kotlin.Array<kotlin.Int>
+            val kClassRawType = rawType.toKClassTypeName()
+            val realRawType =
+                if ("kotlin.Array" == kClassRawType.toString()) {
+                    when (typeArguments[0].toString()) {
+                        "kotlin.Boolean" -> BOOLEAN_ARRAY
+                        "kotlin.Byte" -> BYTE_ARRAY
+                        "kotlin.Char" -> CHAR_ARRAY
+                        "kotlin.Short" -> SHORT_ARRAY
+                        "kotlin.Int" -> INT_ARRAY
+                        "kotlin.Long" -> LONG_ARRAY
+                        "kotlin.Float" -> FLOAT_ARRAY
+                        "kotlin.Double" -> DOUBLE_ARRAY
+                        else -> null
+                    }
+                } else null
+            realRawType ?: (kClassRawType as ClassName).parameterizedBy(
+                *typeArguments.map { it.toKClassTypeName() }
+                    .toTypedArray()
+            )
         }
-    } else if (this is WildcardTypeName) {
-        //通配符
-        when {
-            this.toString() == "*" -> {
-                this
-            }
-            inTypes.isNotEmpty() -> {
-                WildcardTypeName.consumerOf(inTypes[0].toKClassTypeName())
-            }
-            outTypes.isNotEmpty() -> {
-                WildcardTypeName.producerOf(outTypes[0].toKClassTypeName())
-            }
-            else -> {
-                this
+        this is WildcardTypeName -> {
+            //通配符
+            when {
+                this.toString() == "*" -> this
+                inTypes.isNotEmpty() -> {
+                    WildcardTypeName.consumerOf(inTypes[0].toKClassTypeName())
+                }
+                outTypes.isNotEmpty() -> {
+                    WildcardTypeName.producerOf(outTypes[0].toKClassTypeName())
+                }
+                else -> this
             }
         }
-    } else if (this is TypeVariableName) {
-        //泛型
-        val newBounds = ArrayList<TypeName>()
-        bounds.forEach {
-            if (it.toString() != "java.lang.Object")
-                newBounds.add(it.toKClassTypeName())
+        this is TypeVariableName -> {
+            //泛型
+            val newBounds = ArrayList<TypeName>()
+            bounds.forEach {
+                if (it.toString() != "java.lang.Object")
+                    newBounds.add(it.toKClassTypeName())
+            }
+            TypeVariableName.invoke(name, newBounds)
         }
-        TypeVariableName.invoke(name, newBounds)
-    } else if (this.toString() == "java.lang.Object") ClassName("kotlin", "Any")
-    else if (this.toString() == "java.lang.String") ClassName("kotlin", "String")
-    else if (toString() == "java.lang.Number") ClassName("kotlin", "Number")
-    else if (toString() == "java.lang.Boolean") ClassName("kotlin", "Boolean")
-    else if (toString() == "java.lang.Byte") ClassName("kotlin", "Byte")
-    else if (toString() == "java.lang.Short") ClassName("kotlin", "Short")
-    else if (toString() == "java.lang.Integer") ClassName("kotlin", "Int")
-    else if (toString() == "java.lang.Long") ClassName("kotlin", "Long")
-    else if (toString() == "java.lang.Float") ClassName("kotlin", "Float")
-    else if (toString() == "java.lang.Double") ClassName("kotlin", "Double")
-    else if (toString() == "java.lang.CharSequence") ClassName("kotlin", "CharSequence")
-    else if (toString() == "java.util.List") ClassName("kotlin.collections", "List")
-    else if (toString() == "java.util.Map") ClassName("kotlin.collections", "Map")
-    else {
-        this
+        toString() == "java.lang.Object" -> ANY
+        toString() == "java.lang.String" -> STRING
+        toString() == "java.lang.Number" -> NUMBER
+        toString() == "java.lang.Boolean" -> BOOLEAN
+        toString() == "java.lang.Byte" -> BYTE
+        toString() == "java.lang.Short" -> SHORT
+        toString() == "java.lang.Integer" -> INT
+        toString() == "java.lang.Long" -> LONG
+        toString() == "java.lang.Float" -> FLOAT
+        toString() == "java.lang.Double" -> DOUBLE
+        toString() == "java.lang.Character" -> CHAR
+        toString() == "java.lang.CharSequence" -> CHAR_SEQUENCE
+        toString() == "java.util.List" -> LIST
+        toString() == "java.util.Map" -> MAP
+        else -> this
     }
 
 //ExecutableElement 转 FunSpec.Builder
@@ -109,7 +125,11 @@ fun MutableList<ExecutableElement>.findNoArgumentConstructorFun(): ExecutableEle
 fun MutableList<ExecutableElement>.findTypeArgumentConstructorFun(typeParametersSize: Int): ExecutableElement? {
     for (it in this) {
         if (!it.modifiers.contains(Modifier.PUBLIC)) continue
-        //构造方法个数小于泛型个数，则遍历下一个
+        it.parameters.forEach { variableElement ->
+            if (variableElement.asType().toString() == "java.lang.reflect.Type[]")
+                return it
+        }
+        //构造方法参数个数小于泛型个数，则遍历下一个
         if (it.parameters.size < typeParametersSize) continue
         for (i in 0 until typeParametersSize) {
             //参数非java.lang.reflect.Type，返回null
