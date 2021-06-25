@@ -25,12 +25,12 @@ inline fun <T, R> IAwait<T>.newAwait(
 }
 
 /**
- * @param times  retry times, default Int.MAX_VALUE Always try again
+ * @param times  retry times, default Long.MAX_VALUE Always try again
  * @param period retry period, default 0, time in milliseconds
- * @param test   retry conditions, default null，Unconditional retry
+ * @param test   retry conditions, default true，Unconditional retry
  */
 fun <T> IAwait<T>.retry(
-    times: Int = Int.MAX_VALUE,
+    times: Long = Long.MAX_VALUE,
     period: Long = 0,
     test: suspend (Throwable) -> Boolean = { true }
 ): IAwait<T> = object : IAwait<T> {
@@ -42,7 +42,7 @@ fun <T> IAwait<T>.retry(
             this@retry.await()
         } catch (e: Throwable) {
             val remaining = retryTime  //Remaining retries
-            if (remaining != Int.MAX_VALUE) {
+            if (remaining != Long.MAX_VALUE) {
                 retryTime = remaining - 1
             }
             val pass = test(e)
@@ -51,6 +51,34 @@ fun <T> IAwait<T>.retry(
                 await()
             } else throw e
         }
+    }
+}
+
+/**
+ * @param times  repeat times, default Long.MAX_VALUE Always repeat
+ * @param period repeat period, default 0, time in milliseconds
+ * @param stop   repeat stop conditions, default false，Unconditional repeat
+ */
+fun <T> IAwait<T>.repeat(
+    times: Long = Long.MAX_VALUE,
+    period: Long = 0,
+    stop: suspend (T) -> Boolean = { false }
+): IAwait<T> = object : IAwait<T> {
+
+    var remaining = if (times == Long.MAX_VALUE) Long.MAX_VALUE else times - 1
+
+    override suspend fun await(): T {
+        while (remaining > 0) {
+            if (remaining != Long.MAX_VALUE) {
+                remaining--
+            }
+            val t = this@repeat.await()
+            if (stop(t)) {
+                return t
+            }
+            kotlinx.coroutines.delay(period)
+        }
+        return this@repeat.await()
     }
 }
 

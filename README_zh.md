@@ -3,8 +3,12 @@
 [English](https://github.com/liujingxing/rxhttp/blob/master/README.md) | 中文文档
 
 [![](https://jitpack.io/v/liujingxing/rxhttp.svg)](https://jitpack.io/#liujingxing/rxhttp) 
+[![](https://img.shields.io/badge/change-更新日志-success.svg)](https://github.com/liujingxing/rxhttp/wiki/%E6%9B%B4%E6%96%B0%E6%97%A5%E5%BF%97)
+![](https://img.shields.io/badge/API-9+-blue.svg)
+[![](https://img.shields.io/badge/掘金-@不怕天黑-blue.svg)](https://juejin.cn/user/272334612601559/posts)
+[![](https://img.shields.io/badge/QQ群-378530627-red.svg)](https://jq.qq.com/?_wv=1027&k=E53Hakvv)
 
-***RxHttp&RxLife 交流群：378530627   &nbsp;&nbsp;&nbsp;&nbsp;  微信群先加我个人微信（记得备注，否则不通过）：ljx-studio*** 
+***微信群先加我个人微信（记得备注，否则不通过）：ljx-studio*** 
 
 # 主要优势
 
@@ -81,9 +85,9 @@ android {
 }
 
 dependencies {
-    implementation 'com.github.liujingxing.rxhttp:rxhttp:2.6.1'
+    implementation 'com.github.liujingxing.rxhttp:rxhttp:2.6.4'
     implementation 'com.squareup.okhttp3:okhttp:4.9.1' //rxhttp v2.2.2版本起，需要手动依赖okhttp
-    kapt 'com.github.liujingxing.rxhttp:rxhttp-compiler:2.6.1' //生成RxHttp类，纯Java项目，请使用annotationProcessor代替kapt
+    kapt 'com.github.liujingxing.rxhttp:rxhttp-compiler:2.6.4' //生成RxHttp类，纯Java项目，请使用annotationProcessor代替kapt
  }
 ```
 
@@ -116,11 +120,11 @@ dependencies {
     implementation 'com.github.liujingxing.rxlife:rxlife-rxjava3:2.1.0' //管理RxJava3生命周期，页面销毁，关闭请求
 
     //非必须，根据自己需求选择 RxHttp默认内置了GsonConverter
-    implementation 'com.github.liujingxing.rxhttp:converter-fastjson:2.6.1'
-    implementation 'com.github.liujingxing.rxhttp:converter-jackson:2.6.1'
-    implementation 'com.github.liujingxing.rxhttp:converter-moshi:2.6.1'
-    implementation 'com.github.liujingxing.rxhttp:converter-protobuf:2.6.1'
-    implementation 'com.github.liujingxing.rxhttp:converter-simplexml:2.6.1'
+    implementation 'com.github.liujingxing.rxhttp:converter-fastjson:2.6.4'
+    implementation 'com.github.liujingxing.rxhttp:converter-jackson:2.6.4'
+    implementation 'com.github.liujingxing.rxhttp:converter-moshi:2.6.4'
+    implementation 'com.github.liujingxing.rxhttp:converter-protobuf:2.6.4'
+    implementation 'com.github.liujingxing.rxhttp:converter-simplexml:2.6.4'
 }
 ```
 
