@@ -14,6 +14,8 @@ import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import okio.BufferedSink;
 import okio.Okio;
+import okio.Source;
+import rxhttp.wrapper.OkHttpCompat;
 import rxhttp.wrapper.utils.BuildUtil;
 import rxhttp.wrapper.utils.UriUtil;
 
@@ -26,38 +28,54 @@ import rxhttp.wrapper.utils.UriUtil;
 public class UriRequestBody extends RequestBody {
 
     private final Uri uri;
-    private final ContentResolver contentResolver;
+    private final long skipSize;
     private final MediaType contentType;
+    private final ContentResolver contentResolver;
 
     public UriRequestBody(Context context, Uri uri) {
-        this(context, uri, null);
+        this(context, uri, 0, BuildUtil.getMediaTypeByUri(context, uri));
     }
 
     public UriRequestBody(Context context, Uri uri, @Nullable MediaType contentType) {
+        this(context, uri, 0, contentType);
+    }
+
+    public UriRequestBody(Context context, Uri uri, long skipSize) {
+        this(context, uri, skipSize, BuildUtil.getMediaTypeByUri(context, uri));
+    }
+
+    public UriRequestBody(Context context, Uri uri, long skipSize, @Nullable MediaType contentType) {
         this.uri = uri;
+        this.skipSize = skipSize;
         this.contentType = contentType;
         contentResolver = context.getContentResolver();
     }
 
     @Override
     public MediaType contentType() {
-        if (contentType != null) return contentType;
-        if (uri.getScheme().equals(ContentResolver.SCHEME_FILE)) {
-            return BuildUtil.getMediaType((uri.getLastPathSegment()));
-        } else {
-            String contentType = contentResolver.getType(uri);
-            return contentType != null ? MediaType.parse(contentType) : null;
-        }
+        return contentType;
     }
 
     @Override
     public long contentLength() throws IOException {
-        return UriUtil.length(uri, contentResolver);
+        long realLength = UriUtil.length(uri, contentResolver);
+        if (realLength > 0 && skipSize > 0 && realLength > skipSize) {
+            realLength -= skipSize;
+        }
+        return realLength;
     }
 
     @Override
     public void writeTo(@NotNull BufferedSink sink) throws IOException {
-        InputStream inputStream = contentResolver.openInputStream(uri);
-        sink.writeAll(Okio.source(inputStream));
+        InputStream input = null;
+        Source source = null;
+        try {
+            input = contentResolver.openInputStream(uri);
+            if (skipSize > 0) input.skip(skipSize);
+            source = Okio.source(input);
+            sink.writeAll(source);
+        } finally {
+            OkHttpCompat.closeQuietly(source, input);
+        }
     }
 }

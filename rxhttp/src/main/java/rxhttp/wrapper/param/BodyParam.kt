@@ -6,6 +6,7 @@ import okhttp3.MediaType
 import okhttp3.RequestBody
 import okio.ByteString
 import rxhttp.wrapper.OkHttpCompat
+import rxhttp.wrapper.entity.FileRequestBody
 import rxhttp.wrapper.utils.BuildUtil
 import rxhttp.wrapper.utils.asRequestBody
 import java.io.File
@@ -61,15 +62,17 @@ class BodyParam(
     @JvmOverloads
     fun setBody(
         file: File,
+        skipSize: Long = 0,
         mediaType: MediaType? = BuildUtil.getMediaType(file.name),
-    ): BodyParam = setBody(OkHttpCompat.create(mediaType, file))
+    ): BodyParam = setBody(FileRequestBody(file, skipSize, mediaType))
 
     @JvmOverloads
     fun setBody(
         uri: Uri,
         context: Context,
-        contentType: MediaType? = null,
-    ): BodyParam = setBody(uri.asRequestBody(context, contentType))
+        skipSize: Long = 0,
+        contentType: MediaType? = BuildUtil.getMediaTypeByUri(context, uri),
+    ): BodyParam = setBody(uri.asRequestBody(context, skipSize, contentType))
 
     override fun getRequestBody(): RequestBody {
         jsonValue?.let { requestBody = convert(it) }
