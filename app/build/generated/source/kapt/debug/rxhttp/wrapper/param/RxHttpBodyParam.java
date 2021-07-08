@@ -2,6 +2,7 @@ package rxhttp.wrapper.param;
 
 import android.content.Context;
 import android.net.Uri;
+import rxhttp.wrapper.utils.UriUtil;
 
 import rxhttp.wrapper.annotations.Nullable;
 import rxhttp.wrapper.param.BodyParam;
@@ -52,38 +53,18 @@ public class RxHttpBodyParam extends RxHttpAbstractBodyParam<BodyParam, RxHttpBo
         return this;
     }
     
-    public RxHttpBodyParam setBody(File file, long skipSize) {
-        param.setBody(file, skipSize);
-        return this;
-    }
-    
-    public RxHttpBodyParam setBody(File file, long skipSize, @Nullable MediaType mediaType) {
-        param.setBody(file, skipSize, mediaType);
-        return this;
-    }
-    
     public RxHttpBodyParam setBody(File file, @Nullable MediaType mediaType) {
-        param.setBody(file, 0, mediaType);
+        param.setBody(file, mediaType);
         return this;
     }
     
     public RxHttpBodyParam setBody(Uri uri, Context context) {
-        param.setBody(uri, context);
-        return this;
-    }
-    
-    public RxHttpBodyParam setBody(Uri uri, Context context, long skipSize) {
-        param.setBody(uri, context, skipSize);
-        return this;
-    }
-    
-    public RxHttpBodyParam setBody(Uri uri, Context context, long skipSize, @Nullable MediaType contentType) {
-        param.setBody(uri, context, skipSize, contentType);
+        param.setBody(UriUtil.asRequestBody(uri, context));
         return this;
     }
     
     public RxHttpBodyParam setBody(Uri uri, Context context, @Nullable MediaType contentType) {
-        param.setBody(uri, context, 0, contentType);
+        param.setBody(UriUtil.asRequestBody(uri, context, 0, contentType));
         return this;
     }
     
